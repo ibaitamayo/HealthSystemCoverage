@@ -1,0 +1,244 @@
+[
+  {
+    "id": "primary_care",
+    "box": [
+      53.0,
+      405.0,
+      181.0,
+      128.0
+    ]
+  },
+  {
+    "id": "community_pharmacy",
+    "box": [
+      245.0,
+      414.0,
+      152.0,
+      119.0
+    ]
+  },
+  {
+    "id": "home_care",
+    "box": [
+      414.0,
+      419.0,
+      140.0,
+      114.0
+    ]
+  },
+  {
+    "id": "outpatient",
+    "box": [
+      1048.0,
+      191.0,
+      157.0,
+      133.0
+    ]
+  },
+  {
+    "id": "emergency",
+    "box": [
+      1215.0,
+      191.0,
+      169.0,
+      133.0
+    ]
+  },
+  {
+    "id": "inpatient",
+    "box": [
+      1394.0,
+      191.0,
+      177.0,
+      133.0
+    ]
+  },
+  {
+    "id": "surgery",
+    "box": [
+      1583.0,
+      191.0,
+      174.0,
+      133.0
+    ]
+  },
+  {
+    "id": "hospital_pharmacy",
+    "box": [
+      1770.0,
+      191.0,
+      169.0,
+      133.0
+    ]
+  },
+  {
+    "id": "laboratory",
+    "box": [
+      1048.0,
+      387.0,
+      212.0,
+      141.0
+    ]
+  },
+  {
+    "id": "imaging",
+    "box": [
+      1270.0,
+      387.0,
+      224.0,
+      141.0
+    ]
+  },
+  {
+    "id": "pathology",
+    "box": [
+      1506.0,
+      387.0,
+      200.0,
+      141.0
+    ]
+  },
+  {
+    "id": "blood_bank",
+    "box": [
+      1720.0,
+      387.0,
+      218.0,
+      141.0
+    ]
+  },
+  {
+    "id": "screening",
+    "box": [
+      816.0,
+      412.0,
+      140.0,
+      43.0
+    ]
+  },
+  {
+    "id": "immunisation",
+    "box": [
+      816.0,
+      457.0,
+      140.0,
+      40.0
+    ]
+  },
+  {
+    "id": "occupational_health",
+    "box": [
+      816.0,
+      497.0,
+      140.0,
+      33.0
+    ]
+  },
+  {
+    "id": "population",
+    "box": [
+      279.0,
+      627.0,
+      310.0,
+      61.0
+    ]
+  },
+  {
+    "id": "mortality",
+    "box": [
+      906.0,
+      627.0,
+      241.0,
+      61.0
+    ]
+  },
+  {
+    "id": "registries",
+    "box": [
+      1506.0,
+      627.0,
+      228.0,
+      61.0
+    ]
+  },
+  {
+    "id": "microbiology",
+    "box": [
+      53,
+      828,
+      226,
+      90
+    ],
+    "supplemental": true
+  },
+  {
+    "id": "palliative",
+    "box": [
+      290,
+      828,
+      226,
+      90
+    ],
+    "supplemental": true
+  },
+  {
+    "id": "mental_health",
+    "box": [
+      527,
+      828,
+      226,
+      90
+    ],
+    "supplemental": true
+  },
+  {
+    "id": "maternal",
+    "box": [
+      764,
+      828,
+      226,
+      90
+    ],
+    "supplemental": true
+  },
+  {
+    "id": "surveillance",
+    "box": [
+      1001,
+      828,
+      226,
+      90
+    ],
+    "supplemental": true
+  },
+  {
+    "id": "social",
+    "box": [
+      1238,
+      828,
+      226,
+      90
+    ],
+    "supplemental": true
+  },
+  {
+    "id": "lifestyle",
+    "box": [
+      1475,
+      828,
+      226,
+      90
+    ],
+    "supplemental": true
+  },
+  {
+    "id": "costs",
+    "box": [
+      1712,
+      828,
+      226,
+      90
+    ],
+    "supplemental": true
+  }
+]

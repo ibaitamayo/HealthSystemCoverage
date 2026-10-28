@@ -1,0 +1,28 @@
+Package: HealthSystemCoverage
+Type: Package
+Title: Profile Health-System Coverage in OMOP Data Sources
+Version: 0.2.1
+Authors@R: person("ibaitamayo", role = c("aut", "cre"),
+    email = "ibai.tamayo.rodriguez@navarra.es")
+Description: Produces an auditable profile of which parts of a health system
+    are represented in an OMOP Common Data Model database. The profile is
+    organised around logical health-system functions rather than OMOP tables,
+    and distinguishes presence, structure, semantic reliability, provenance,
+    time coverage, and known defects. Supports OHDSI cohort membership,
+    explicit quality review and local event logs for observed care trajectories.
+    Report bundles contain aggregate results only.
+License: MIT + file LICENSE
+URL: https://github.com/ibaitamayo/HealthSystemCoverage
+BugReports: https://github.com/ibaitamayo/HealthSystemCoverage/issues
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports:
+    DBI,
+    jsonlite
+Suggests:
+    RPostgres,
+    bupaR,
+    processmapR,
+    htmlwidgets,
+    DiagrammeR
+RoxygenNote: 7.3.2
