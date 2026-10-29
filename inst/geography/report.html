@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Health-system area comparison</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f7f8;color:#243440;font:15px/1.5 Arial,Helvetica,sans-serif}main{max-width:1050px;margin:auto;padding:24px}h1{font-size:25px;margin:0 0 6px}h2{font-size:19px;margin:0}p{margin:8px 0}.muted{color:#536673}.controls{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0}label{display:flex;flex-direction:column;gap:5px;min-width:210px;max-width:100%}select,button{font:inherit;padding:8px;border:1px solid #a9bac5;border-radius:5px;background:white;color:inherit;max-width:100%}select:focus-visible,button:focus-visible,path:focus-visible{outline:3px solid #356d91;outline-offset:3px}.panel{background:white;padding:20px;border:1px solid #d9e1e6;border-radius:8px;margin-top:16px}#map{display:block;width:100%;height:auto;max-height:560px}#map path{stroke:white;stroke-width:1.4;vector-effect:non-scaling-stroke;cursor:pointer}#map path.selected{stroke:#243440;stroke-width:2.5}#map path.unavailable{cursor:default}#map text{font:12px Arial,Helvetica,sans-serif;fill:#243440;pointer-events:none}.legend{display:flex;gap:15px;flex-wrap:wrap;font-size:13px}.swatch{width:12px;height:12px;display:inline-block;margin-right:5px}.summary-head{display:flex;gap:15px;justify-content:space-between;align-items:center;flex-wrap:wrap}.table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;margin:12px 0}th,td{text-align:left;padding:8px;border-bottom:1px solid #e1e6e9}th{font-weight:600}.number{text-align:right;font-variant-numeric:tabular-nums}.Subcomponent td:first-child{padding-left:25px}.Component td:first-child{padding-left:15px}caption{text-align:left;color:#536673;margin-top:8px}details{margin-top:15px}dl{display:grid;grid-template-columns:130px 1fr;gap:10px}dd{margin:0}.toolbar{display:flex;gap:10px;flex-wrap:wrap}a{color:#205d83}#selection-note{min-height:1.5em}@media(max-width:500px){main{padding:12px}.panel{padding:12px}label{min-width:0;width:100%}dl{grid-template-columns:1fr}#map text{font-size:14px}}
+</style></head><body><main>
+<h1>Health-system area comparison</h1><p id="source" class="muted"></p>
+<div class="controls"><label>Compare indicator<select id="indicator"></select></label><label>Filter the single profile<select id="population"></select></label></div>
+<section class="panel" aria-label="Geographic comparison">
+<p id="difference" aria-live="polite"></p>
+<svg id="map" role="img" aria-label="Area boundaries and descriptive differences in recorded coverage"></svg>
+<p id="selection-note" class="muted" aria-live="polite"></p>
+<div class="legend"><span><i class="swatch" style="background:#ba7844"></i>Below overall percentage</span><span><i class="swatch" style="background:#4c8da7"></i>Above overall percentage</span><span><i class="swatch" style="background:#b7c8ce"></i>Equal to overall</span><span><i class="swatch" style="background:#e1e6e9"></i>Unavailable / suppressed</span></div>
+<p class="muted">People with ≥1 matching record / selected people in the area. Differences in percentage points (pp), not statistical significance or differences in actual access to care.</p>
+<p id="unmapped" class="muted"></p>
+</section>
+<section class="panel"><div class="summary-head"><h2 id="summary-title">Single profile</h2><span id="denominator"></span></div>
+<div class="table-wrap"><table><thead><tr><th>Health-system component</th><th class="number">People with data</th><th class="number">Population</th><th class="number">Representation</th><th class="number">Records</th></tr></thead><tbody id="summary"></tbody></table></div>
+<div class="toolbar"><button id="download" type="button">Download selected table</button><a href="area_coverage_results.csv" download>All area results (CSV)</a></div>
+</section>
+<details class="panel"><summary>Population, interpretation and provenance</summary><dl>
+<dt>Population</dt><dd id="population-note"></dd><dt>Map linkage</dt><dd>Explicit geographic identifiers. Unmatched groups remain in the denominator and selector; no boundary or assignment is inferred.</dd>
+<dt>Comparability</dt><dd>Same cohort criteria, windows and calendar filters across areas. Last-known location is not a historical residence trajectory. These results describe recorded data, not an agreed disease pathway.</dd>
+<dt>Privacy</dt><dd>Small positive cells and small complements are suppressed. Suppression is not an anonymisation guarantee; overlapping aggregates require disclosure review before sharing.</dd>
+<dt>Differences</dt><dd>Colour encodes signed difference from the global percentage, including unmapped groups. Intensity is scaled within the selected indicator. Range uses only mapped areas with available values. “No visible difference” means equality at one-decimal display precision, not a statistical conclusion.</dd>
+<dt>Cartography</dt><dd id="attribution"></dd><dt>Generated</dt><dd id="generated"></dd>
+</dl></details>
+</main><script>
+(()=>{
+'use strict';
+const data=__AREA_PAYLOAD__;
+const rows=data.results,features=data.map.features,ns='http://www.w3.org/2000/svg';
+const byId=id=>document.getElementById(id),metric=byId('indicator'),population=byId('population');
+const number=new Intl.NumberFormat('en-GB'),decimal=new Intl.NumberFormat('en-GB',{minimumFractionDigits:1,maximumFractionDigits:1});
+const finite=v=>typeof v==='number'&&Number.isFinite(v);
+const pct=v=>finite(v)?decimal.format(v)+'%':'Unavailable';
+const count=v=>finite(v)?number.format(v):'Unavailable';
+const delta=v=>(v>0?'+':'')+decimal.format(v)+' pp';
+const get=(area,node)=>rows.find(r=>r.area_id===area&&r.node_id===node);
+const all=rows.filter(r=>r.area_id==='__ALL__');
+byId('source').textContent=data.source;byId('population-note').textContent=data.population_note;
+byId('attribution').textContent=data.attribution||'Provider must supply cartographic attribution/licence.';
+byId('generated').textContent=data.generated;
+const option=(value,label,parent)=>{const o=document.createElement('option');o.value=value;o.textContent=label;parent.append(o)};
+for(const level of [...new Set(all.map(r=>r.level))]){
+ const group=document.createElement('optgroup');group.label=level;
+ all.filter(r=>r.level===level).forEach(r=>option(r.node_id,r.label,group));metric.append(group);
+}
+const populations=[...new Map(rows.map(r=>[r.area_id,r])).values()];
+populations.forEach(r=>option(r.area_id,r.area_name,population));population.value='__ALL__';
+metric.value=all.some(r=>r.node_id==='primary_care_encounters')?'primary_care_encounters':all[0].node_id;
+const svg=byId('map');svg.setAttribute('viewBox',`0 0 ${data.map.width} ${data.map.height}`);
+function element(name,attributes,parent){const e=document.createElementNS(ns,name);Object.entries(attributes).forEach(([k,v])=>e.setAttribute(k,v));parent.append(e);return e}
+const objects=features.map(f=>{
+ const g=element('g',{},svg),p=element('path',{d:f.path,'fill-rule':'evenodd','data-area':f.area_id,tabindex:'0',role:'button'},g);
+ const title=element('title',{},p),text=element('text',{x:f.x,y:f.y,'text-anchor':'middle'},g);
+ const label=element('tspan',{x:f.x},text);label.textContent=f.area_name;
+ const value=element('tspan',{x:f.x,dy:'17'},text),difference=element('tspan',{x:f.x,dy:'17'},text);
+ const choose=()=>{if(get(f.area_id,metric.value)){population.value=f.area_id;update()}};
+ p.addEventListener('click',choose);p.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose()}});
+ p.addEventListener('pointerenter',()=>{byId('selection-note').textContent=title.textContent});
+ p.addEventListener('pointerleave',()=>{byId('selection-note').textContent='Select an area to filter the single profile below.'});
+ p.addEventListener('focus',()=>{byId('selection-note').textContent=title.textContent});
+ return {f,p,title,value,difference};
+});
+function update(){
+ const global=get('__ALL__',metric.value),mapped=features.map(f=>get(f.area_id,metric.value)).filter(r=>r&&finite(r.percentage));
+ const percentages=mapped.map(r=>r.percentage),spread=percentages.length>1?Math.max(...percentages)-Math.min(...percentages):null;
+ const amplitude=Math.max(1,...mapped.map(r=>finite(global.percentage)?Math.abs(r.percentage-global.percentage):0));
+ byId('difference').textContent=spread===null?'Area comparison unavailable':
+  `${Math.round(spread*10)===0?'No visible difference at displayed precision':'Descriptive differences observed'} · range ${decimal.format(spread)} pp · overall ${pct(global.percentage)}`;
+ objects.forEach(o=>{
+  const r=get(o.f.area_id,metric.value),value=r?r.percentage:null,d=finite(value)&&finite(global.percentage)?value-global.percentage:null;
+  o.p.setAttribute('fill',d===null?'#e1e6e9':d===0?'#b7c8ce':d<0?'#ba7844':'#4c8da7');
+  o.p.setAttribute('fill-opacity',d===null?1:.18+.48*Math.min(1,Math.abs(d)/amplitude));
+  o.p.setAttribute('class',(population.value===o.f.area_id?'selected ':'')+(!r?'unavailable':''));
+  o.value.textContent=pct(value);o.difference.textContent=d===null?'':delta(d);
+  o.title.textContent=`${o.f.area_name}: ${pct(value)}${r?' · N='+count(r.population):' · no matching population group'}${d===null?'':' · '+delta(d)+' vs overall'}`;
+  o.p.setAttribute('aria-label',o.title.textContent);
+ });
+ const selected=population.value,group=rows.filter(r=>r.area_id===selected),head=group[0];
+ byId('summary-title').textContent='Single profile · '+head.area_name;byId('denominator').textContent='N = '+count(head.population);
+ const table=byId('summary');table.replaceChildren();
+ group.forEach(r=>{const tr=document.createElement('tr');tr.className=r.level;
+  [r.label,count(r.persons),count(r.population),pct(r.percentage),count(r.records)].forEach((value,i)=>{const td=document.createElement('td');td.textContent=value;if(i)td.className='number';tr.append(td)});table.append(tr)});
+ const un=populations.filter(r=>r.area_id!=='__ALL__'&&!r.mapped);
+ byId('unmapped').textContent=un.length?'Not located in mapped polygons: '+un.map(r=>r.area_name+' (N='+count(r.population)+')').join('; ')+'. Retained in overall population.':'';
+ byId('selection-note').textContent='Select an area to filter the single profile below.';
+}
+metric.addEventListener('change',update);population.addEventListener('change',update);
+byId('download').addEventListener('click',()=>{
+ const quote=v=>'"'+String(v??'').replaceAll('"','""')+'"';
+ const fields=['area_id','area_name','node_id','parent_id','level','label','persons','population','percentage','records','measurement_status'];
+ const content=[fields.join(','),...rows.filter(r=>r.area_id===population.value).map(r=>fields.map(k=>quote(r[k])).join(','))].join('\r\n');
+ const url=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='selected-area-results.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+update();
+})();
+</script></body></html>

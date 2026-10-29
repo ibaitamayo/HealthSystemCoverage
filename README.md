@@ -131,6 +131,20 @@ table masking is not an anonymisation guarantee.
 
 ## Documentation and development
 
+### Geographic comparison (0.2.3)
+
+Provide local GeoJSON/shapefile boundaries with unique IDs using
+`read_health_areas()` (optional `sf` dependency). Configure the population's
+location column and, if needed, an explicit code crosswalk in
+`profile_health_areas()`. Or use `area_coverage_from_data()` for already
+aggregated data. `write_area_report()` creates an offline comparison map and
+one filterable table, including hierarchical results and CSV exports.
+
+The map shows descriptive differences, not significance or true care access.
+Unmapped/unknown people stay in the denominator. No additional person
+exclusions are applied. See [geographic comparison](docs/GEOGRAPHIC_COMPARISON.md)
+for inputs, cohort scope, geometry attribution and privacy limitations.
+
 ### Optional event calendar exclusions
 
 After selecting eligible people, enable a calendar filter with

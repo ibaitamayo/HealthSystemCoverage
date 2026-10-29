@@ -1,3 +1,14 @@
+# HealthSystemCoverage 0.2.3
+
+* Add provider-defined GeoJSON/shapefile/sf area boundaries and explicit
+  LOCATION-to-area crosswalks, without language-dependent recognition.
+* Add area-grouped read-only cohort/database coverage and aggregate-data input.
+  Unknown and unmapped populations remain in the global denominator.
+* Add one offline comparative map and one filterable hierarchical results table,
+  with descriptive percentage-point differences and CSV export.
+* Preserve event calendar bounds, explicit cohort membership and small-cell
+  masking, including small complements. No new person exclusions are implied.
+
 # HealthSystemCoverage 0.2.2
 
 * Add opt-in event calendar bounds with a supplied ETL/database-generation date
