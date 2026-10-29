@@ -94,7 +94,13 @@ denominator. Small-cell export masking also masks provenance fractions whose
 numerators/denominators are suppressed; overlapping outputs still require
 disclosure review. Internal R objects retain unmasked aggregate counts.
 
-## Deferred
+## Subsequent context audits
+
+Version 0.2.6 adds alias reclassification, cutoff lag, conservative Visit
+hierarchy resolution and provider-reviewable pharmacy/mail-order type
+definitions. See [context audits](CONTEXT_AUDITS.md) for their exact scope.
+
+## Deferred in 0.2.4
 
 No any-vocabulary `Maps to` misclassification test, alias reclassification audit,
 cutoff-lag threshold, visit-hierarchy expansion or dispensing-type discovery is

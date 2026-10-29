@@ -104,6 +104,7 @@ profile_health_areas <- function(con,config,areas,cohort=NULL,location_column="c
   assert_connection(con)
   stopifnot(inherits(config,"health_system_profile_config"),inherits(areas,"hsc_health_areas"))
   if(config$dbms!="postgresql")stop("Currently supports PostgreSQL only")
+  config<-prepare_context_config(con,config)
   if(length(location_column)!=1L||!location_column%in%c("city","state","county","zip","location_source_value","country_source_value"))stop("Unsupported location grouping column")
   s<-config$cdm_schema
   quote<-function(x)as.character(DBI::dbQuoteString(con,x))
@@ -170,11 +171,28 @@ profile_health_areas <- function(con,config,areas,cohort=NULL,location_column="c
     " Event calendar bounds: ",config$event_date_min," through ",config$database_cutoff,
     " (",config$database_cutoff_source,"); drug end dates exempt only from the upper bound.")
   measured<-do.call(rbind,out)
+  measured$status[measured$node_id%in%c("clinical_notes","group_documentation")&measured$records>0]<-"detected_unstructured"
+  measured$status[measured$node_id%in%c("mental_health","maternal_prenatal_care")&measured$records>0]<-"detected_partial"
   if(!is.null(cohort))config$analysis_population<-list(name=cohort$name)
+  context<-probe_context_audit(con,config,cohort)
+  alerts<-context_alerts(context,config)
+  if(any(alerts$rule_id=="unclassified_setting_fraction"))for(i in seq_len(nrow(measured))) {
+    ids<-if(measured$node_id[i]%in%member$component_id)measured$node_id[i] else
+      member$component_id[member$group_id==measured$node_id[i]|member$area_id==measured$node_id[i]]
+    if(any(ids%in%visit_dependent_components())) {
+      if(measured$reliability[i]%in%c("high","moderate","low","unusable"))
+        measured$reliability[i]<-cap_reliability(measured$reliability[i],"low")
+      measured$issues[i]<-paste(c(measured$issues[i][!is.na(measured$issues[i])],
+        "Selected-population setting audit exceeded the unknown fraction threshold; this cap is profile-wide, not an area-specific estimate."),collapse=" ")
+    }
+  }
   result<-area_coverage_from_data(measured,areas,config$privacy_min_cell,
     if(is.null(config$source_name))s else config$source_name,population_note,attribution)
   result$crosswalk_audit<-audit_source_crosswalk(con,config)
+  result$context_audit<-context
+  result$config<-config
   result$findings<-rbind(coverage_findings(measured,config),
+    context_person_findings(context,config),
     if(!is.null(result$crosswalk_audit$findings))result$crosswalk_audit$findings else empty_findings())
   result
 }
@@ -187,6 +205,11 @@ write_area_report <- function(profile,path) {
   findings<-if(is.null(profile$findings))empty_findings() else profile$findings
   utils::write.csv(suppress_small_cells(findings,profile$privacy_min_cell),file.path(path,"quality_findings.csv"),row.names=FALSE,na="")
   write_crosswalk_audit(profile$crosswalk_audit,path)
+  write_context_audit(profile$context_audit,profile$config,path)
+  if(!is.null(profile$config$discharge_outcome_map))utils::write.csv(profile$config$discharge_outcome_map,
+    file.path(path,"configured_discharge_outcomes.csv"),row.names=FALSE)
+  if(!is.null(profile$config$provider_specialty_map))utils::write.csv(profile$config$provider_specialty_map,
+    file.path(path,"configured_provider_specialties.csv"),row.names=FALSE)
   payload<-list(results=d,map=unclass(profile$areas),source=profile$source_name,
     population_note=profile$population_note,attribution=profile$attribution,
     generated=format(profile$generated_at,tz="UTC",usetz=TRUE))
@@ -194,7 +217,8 @@ write_area_report <- function(profile,path) {
   encoded<-gsub("<","\\u003c",encoded,fixed=TRUE)
   template<-paste(readLines(system.file("geography","report.html",package="HealthSystemCoverage"),warn=FALSE),collapse="\n")
   html<-sub("__AREA_PAYLOAD__",encoded,template,fixed=TRUE)
-  html<-sub("</body>",paste0(findings_html(findings,profile$privacy_min_cell),crosswalk_audit_html(profile$crosswalk_audit),"</body>"),html,fixed=TRUE)
+  html<-sub("</body>",paste0(findings_html(findings,profile$privacy_min_cell),crosswalk_audit_html(profile$crosswalk_audit),
+    context_audit_html(profile$context_audit,profile$config),"</body>"),html,fixed=TRUE)
   writeLines(html,file.path(path,"area_report.html"),useBytes=TRUE)
   # Only masked aggregates and geometry are exported, never crosswalk/person IDs.
   writeLines(encoded,file.path(path,"area_coverage_results.json"),useBytes=TRUE)

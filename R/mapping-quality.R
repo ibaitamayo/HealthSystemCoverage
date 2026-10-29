@@ -119,7 +119,8 @@ enrich_coverage_stats <- function(measured,config) {
 # unrecognised visit concepts can move or hide the matching records. Explicit
 # concept rules replace the setting definition and have their own scoped zero.
 visit_dependent_components <- function() c(
-  "primary_care_encounters","inpatient_admissions","emergency_care",
+  "primary_care_encounters","primary_care_emergency","inpatient_admissions","emergency_care",
+  "emergency_care_unspecified","hospital_encounters_unspecified",
   "specialist_outpatient_encounters","home_hospitalisation","palliative_care",
   "mental_health","maternal_prenatal_care","primary_care_diagnoses",
   "inpatient_diagnoses","specialist_outpatient_diagnoses",
@@ -127,6 +128,7 @@ visit_dependent_components <- function() c(
   "hospital_medications")
 
 zero_coverage_status <- function(node,config,assessed_children=NULL) {
+  if(domain_is_empty(node,config))return("not_detected")
   ids<-node
   member<-coverage_membership()
   if(node%in%c(member$group_id,member$area_id)) {
@@ -154,6 +156,11 @@ apply_coverage_quality <- function(components,measured,config) {
         component_id=components$component_id[i]),stats::setNames(list(z[[nm]][1]),nm)))
     q<-mapping_quality(z,config)
     for(nm in intersect(names(q),quality_fields()))components[[nm]][i]<-q[[nm]]
+    if(z$records>0&&"mapping_records"%in%names(z)&&!is.na(z$mapping_records)&&z$mapping_records==0) {
+      if(components$status[i]%in%c("not_assessed","unknown","not_detected"))components$status[i]<-"detected_structured"
+      if(components$reliability[i]=="unknown")components$reliability[i]<-"moderate"
+      if(is.na(components$evidence[i]))components$evidence[i]<-"Current scoped query under the exported structured definition; presence is not completeness."
+    }
     if(all(c("mapping_records","valid_standard_records")%in%names(z))&&z$mapping_records>0) {
       # Preserve reviewed semantic findings; missing source provenance alone
       # must never manufacture detected_misclassified.
@@ -189,12 +196,20 @@ apply_coverage_quality <- function(components,measured,config) {
         if(z$records==0&&components$status[i]=="unknown")zero_setting_issue(),
         reviewed_issue,q$quality_issue[!is.na(q$quality_issue)]),collapse=" ")
   }
-  components
+  apply_source_component_quality(components,config)
 }
 
 empty_findings <- function() data.frame(component_id=character(),area_id=character(),rule_id=character(),
   scope=character(),action=character(),in_scope=logical(),excluded_by_filter=logical(),
-  rule_order=integer(),incremental_exclusion=logical(),records=numeric(),persons=numeric())
+  rule_order=integer(),incremental_exclusion=logical(),records=numeric(),persons=numeric(),
+  grain=character(),count_unit=character())
+
+sum_finding_records <- function(findings) {
+  if(!"grain"%in%names(findings)||any(findings$grain!="event"))
+    stop("Record summation requires event-grain findings; person-grain evidence cannot be counted as events")
+  if(anyDuplicated(findings$rule_id))stop("Repeated rules/scopes require explicit deduplication, not summation")
+  sum(findings$records)
+}
 
 coverage_findings <- function(measured,config) {
   out<-list()
@@ -206,7 +221,7 @@ coverage_findings <- function(measured,config) {
       scope=if(is.null(config$analysis_population))"component_definition_all_persons" else "component_definition_and_selected_cohort_window",action=action,
       in_scope=action=="retained",excluded_by_filter=action%in%c("excluded_by_filter","excluded_by_prior_rule"),
       rule_order=order,incremental_exclusion=action=="excluded_by_filter",
-      records=as.double(n),persons=as.double(p))
+      records=as.double(n),persons=as.double(p),grain="event",count_unit="record")
   }
   for(i in seq_len(nrow(measured))) {
     z<-measured[i,,drop=FALSE]

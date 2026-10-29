@@ -1,3 +1,50 @@
+# HealthSystemCoverage 0.2.6
+
+* Combine coded visit modality and establishment type before source-text aliases:
+  primary-care urgency, hospital emergency/combined ER-inpatient, unspecified
+  urgency, hospital contacts of unspecified modality and contradictory pairs.
+  Add pair-specific provider mappings; preserve ERIP as a combined record,
+  without fabricating or automatically merging episodes. Parent SQL deduplicates
+  shared source keys across emergency and inpatient definitions.
+* Read CDM_SOURCE dates and adopt an unambiguous plausible source_release_date
+  only when observed starts do not contradict it and no user cutoff was supplied.
+  Export candidate validation and provenance; rejected metadata never excludes
+  newer records. Sys.Date() remains the dynamic fallback.
+* Distinguish absent, empty and nonempty domain tables by actual existence probes,
+  rather than planner estimates. Empty domains give a scoped not_detected even
+  when setting classification is incomplete.
+* Add structured type distributions, provider-linked service encounters,
+  unstructured note representation, costs through domain-correct event links,
+  economic-field availability and location coverage. Costs do not imply copayment;
+  the old costs_and_copayment component ID is retained for compatibility only.
+* Add discharge-destination and preceding-visit integrity audits. Death markers
+  require a coded outcome or explicit provider mapping; report person/event/unknown
+  grain, distinct people, source rows and date agreement without equating them.
+  Person/unknown-grain findings have no summable records. No arbitrary increase
+  of confirmed hospital mortality is made from source markers alone.
+* Do not expose unexpected NOTE column names/content; flag malformed structures.
+  Unstructured representation no longer becomes misclassification in aggregates.
+
+* Audit visit classification with and without source aliases, export winning
+  patterns and reclassified record counts, and warn when aliases empty a setting.
+* Resolve unambiguous Visit-domain descendants of inpatient, outpatient and
+  emergency roots using the instance vocabulary. Multi-root concepts remain
+  unknown; home visits do not imply hospital-at-home or primary care.
+* Publish filtered setting distributions, including unlinked events. A declared
+  configurable unknown fraction threshold (default 0.20) caps setting-dependent
+  reliability at low, without changing counts, eligibility or reviewed stricter
+  conclusions. Geographic caps use the selected population's overall audit,
+  not separate per-area estimates.
+* Show database cutoff alongside latest observed clinical event starts, with
+  raw maxima separate. Exclude prospective drug ends from that comparison and
+  warn on a Sys.Date() lag over a configurable 183 days. No ETL date is invented.
+* Examine drug_type_concept_id distributions and add pharmacy/mail-order
+  dispensing definitions validated against the loaded Type Concept vocabulary.
+  Generic EHR and generic dispensing do not prove community provenance. Results
+  remain limited to the declared definition, not completeness or actual location.
+* Export context_audit CSV evidence and visible report warnings consistently
+  across global, cohort and geographic outputs. No OMOP tables are modified.
+
 # HealthSystemCoverage 0.2.5
 
 * Convert PostgreSQL integer64 mapping counts before copying them to numeric

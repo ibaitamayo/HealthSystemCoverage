@@ -82,7 +82,7 @@ write_architectural_report <- function(profile,path) {
   meta<-gsub("<","\\u003c",meta,fixed=TRUE)
   out<-sub("__META__",meta,out,fixed=TRUE)
   out<-sub("</body>",paste0(event_filter_summary_html(profile),mapping_provenance_html(profile$components,profile$config),findings_html(profile$findings,profile$config$privacy_min_cell),
-    crosswalk_audit_html(profile$evidence$source_crosswalk$data),"</body>"),out,fixed=TRUE)
+    crosswalk_audit_html(profile$evidence$source_crosswalk$data),context_audit_html(profile$evidence$context_audit$data,profile$config),"</body>"),out,fixed=TRUE)
   writeLines(out,file.path(path,"profile.html"),useBytes=TRUE)
   invisible(path)
 }

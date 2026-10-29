@@ -43,7 +43,7 @@ visit_setting_case <- function(con, aliases, alias = "v", care_site_alias = "cs"
     inpatient_hospital = "inpatient",
     specialist_outpatient = "specialist_outpatient"
   )
-  clauses <- character()
+  clauses <- structured_visit_clauses(con,aliases,alias,care_site_alias)
   for (source_type in names(priority)) {
     patterns <- aliases$pattern[aliases$source_type == source_type]
     if (!length(patterns)) next
@@ -54,19 +54,6 @@ visit_setting_case <- function(con, aliases, alias = "v", care_site_alias = "cs"
              " THEN ", DBI::dbQuoteString(con, unname(priority[[source_type]])))
     )
   }
-  local_map <- attr(aliases, "visit_concept_map")
-  if (!is.null(local_map)) for (i in seq_len(nrow(local_map))) {
-    stopifnot(is.numeric(local_map$concept_id),
-              all(local_map$concept_id == floor(local_map$concept_id)))
-    clauses <- c(clauses, paste0("WHEN ", alias, ".visit_concept_id=",
-      local_map$concept_id[i], " THEN ", DBI::dbQuoteString(con, local_map$setting[i])))
-  }
-  # Standard visit concepts identify settings without matching concept names.
-  # An outpatient visit does not by itself establish specialist provenance.
-  clauses <- c(clauses,
-    paste0("WHEN ", alias, ".visit_concept_id=9201 THEN 'inpatient'"),
-    paste0("WHEN ", alias, ".visit_concept_id=9203 THEN 'emergency'"),
-    paste0("WHEN ", alias, ".visit_concept_id=9202 THEN 'outpatient_unspecified'"))
   paste("CASE", paste(clauses, collapse = " "),
         "ELSE 'other_or_unknown' END")
 }

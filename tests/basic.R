@@ -21,7 +21,7 @@ p <- structure(list(config=cfg,components=components,generated_at=Sys.time(),
   evidence=list(person=list(data=data.frame(persons=100)),coverage=list(data=measures)),
   probe_errors=NULL),class="health_system_profile")
 result <- coverage_results(p)
-stopifnot(nrow(result)==74L,!anyDuplicated(result$node_id))
+stopifnot(nrow(result)==nrow(s)+nrow(HealthSystemCoverage:::coverage_groups())+length(HealthSystemCoverage:::coverage_area_names()),!anyDuplicated(result$node_id))
 stopifnot(result$persons[result$node_id=="group_primary_care"]==70)
 stopifnot(is.na(result$percentage[result$node_id=="vaccinations"]))
 stopifnot(result$measurement_status[result$node_id=="radiology_imaging"]=="not_assessed")

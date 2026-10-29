@@ -1,5 +1,6 @@
 collect_care_events <- function(con,config,cohort,components=character(),setting_labels=NULL) {
   assert_connection(con)
+  config<-prepare_context_config(con,config)
   q<-cohort_sql(con,cohort)
   s<-config$cdm_schema
   # Cases are cohort intervals, not inferred disease episodes. IDs remain local.

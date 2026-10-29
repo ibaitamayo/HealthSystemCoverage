@@ -2,6 +2,7 @@ profile_cohort <- function(con,config,cohort,audit_event_dates=FALSE) {
   assert_connection(con)
   stopifnot(inherits(config,"health_system_profile_config"),inherits(cohort,"hsc_cohort"))
   if(config$dbms!="postgresql")stop("Currently supports PostgreSQL only")
+  config<-prepare_context_config(con,config)
   q<-cohort_sql(con,cohort)
   bad<-DBI::dbGetQuery(con,paste0("SELECT count(*) AS n FROM (",q,") c LEFT JOIN ",
     qualified_table(con,config$cdm_schema,"person")," p ON p.person_id=c.subject_id WHERE p.person_id IS NULL OR c.cohort_start_date IS NULL OR c.cohort_end_date IS NULL OR c.cohort_end_date<c.cohort_start_date"))
@@ -29,8 +30,11 @@ profile_cohort <- function(con,config,cohort,audit_event_dates=FALSE) {
   config$analysis_population<-list(name=cohort$name,persons=size$persons,episodes=size$episodes)
   config$adjudications<-NULL
   components<-apply_coverage_quality(components,probes$coverage$data,config)
+  probes$context_audit<-safe_probe("context_audit",function()probe_context_audit(con,config,cohort))
+  components<-apply_context_quality(components,probes$context_audit$data,config)
   errors<-do.call(rbind,lapply(probes,function(p)if(identical(p$status,"error"))data.frame(probe=p$name,error=p$error) else NULL))
   structure(list(generated_at=Sys.time(),config=config,components=components,
     evidence=probes,findings=rbind(coverage_findings(probes$coverage$data,config),
+      context_person_findings(probes$context_audit$data,config),
       if(!is.null(probes$source_crosswalk$data$findings))probes$source_crosswalk$data$findings else empty_findings()),probe_errors=errors),class="health_system_profile")
 }

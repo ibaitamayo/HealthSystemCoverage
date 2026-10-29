@@ -1,11 +1,13 @@
 # Fixed functional catalogue; source-specific recognition is configured separately.
 coverage_groups <- function() {
   defs <- list(
-    c("community", "primary_care", "Primary Care", "primary_care_encounters", "primary_care_diagnoses", "primary_care_procedures", "primary_care_nursing"),
+    c("community", "primary_care", "Primary Care", "primary_care_encounters", "primary_care_emergency", "primary_care_diagnoses", "primary_care_procedures", "primary_care_nursing"),
     c("community", "community_pharmacy", "Community Medicines", "outpatient_prescriptions", "community_dispensings"),
     c("community", "home_care", "Hospital at Home", "home_hospitalisation"),
     c("hospital", "outpatient", "Outpatient Clinics", "specialist_outpatient_encounters", "specialist_outpatient_diagnoses"),
     c("hospital", "emergency", "Emergency", "emergency_care"),
+    c("other_care", "emergency_unspecified", "Emergency - Setting Unspecified", "emergency_care_unspecified"),
+    c("hospital", "hospital_unspecified", "Hospital - Modality Unspecified", "hospital_encounters_unspecified"),
     c("hospital", "inpatient", "Inpatient Care", "inpatient_admissions", "inpatient_diagnoses", "inpatient_procedures"),
     c("hospital", "surgery", "Surgery", "surgery"),
     c("hospital", "hospital_pharmacy", "Hospital Medicines", "hospital_medications"),
@@ -26,7 +28,8 @@ coverage_groups <- function() {
     c("other_care", "maternal", "Maternal & Prenatal Care", "maternal_prenatal_care"),
     c("other_care", "social", "Social Care", "social_care"),
     c("shared", "lifestyle", "Lifestyle", "lifestyle"),
-    c("shared", "costs", "Costs & Copayment", "costs_and_copayment")
+    c("shared", "costs", "Costs", "costs_and_copayment"),
+    c("shared", "documentation", "Clinical Notes", "clinical_notes")
   )
   out <- data.frame(area = vapply(defs, `[`, "", 1),
                     group_id = vapply(defs, `[`, "", 2),

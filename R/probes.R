@@ -5,9 +5,16 @@ probe_inventory <- function(con, config) {
     "pg_total_relation_size(c.oid)::bigint AS total_bytes ",
     "FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace ",
     "WHERE n.nspname=", DBI::dbQuoteString(con, schema),
-    " AND c.relkind='r' ORDER BY c.relname"
+    " AND c.relkind IN ('r','p','v','m') ORDER BY c.relname"
   )
-  DBI::dbGetQuery(con, sql)
+  x<-DBI::dbGetQuery(con,sql)
+  missing<-setdiff(expected_cdm_tables(),x$table_name)
+  if(length(missing))x<-rbind(x,data.frame(table_name=missing,estimated_rows=NA_real_,total_bytes=NA_real_))
+  x$table_state<-vapply(x$table_name,function(t) {
+    if(t%in%missing)return("absent")
+    if(isTRUE(DBI::dbGetQuery(con,paste0("SELECT EXISTS (SELECT 1 FROM ",qualified_table(con,schema,t)," LIMIT 1) AS present"))$present[1]))"nonempty" else "empty"
+  },"")
+  x[order(x$table_name),]
 }
 
 probe_person <- function(con, config) {

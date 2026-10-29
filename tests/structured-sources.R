@@ -1,0 +1,36 @@
+library(HealthSystemCoverage)
+cfg<-new_profile_config("cdm",visit_concept_map=data.frame(concept_id=c(9203,9203),
+ place_of_service_concept_id=c(38004247,38004515),setting=c("primary_care_emergency","emergency")))
+stopifnot(inherits(cfg,"health_system_profile_config"))
+bad<-data.frame(concept_id=c(9203,9203),place_of_service_concept_id=c(0,0),setting="emergency")
+stopifnot(inherits(try(new_profile_config("cdm",visit_concept_map=bad),silent=TRUE),"try-error"))
+aliases<-data.frame(source_type="primary_care_ehr",pattern="fictional")
+sql<-HealthSystemCoverage:::visit_setting_case(DBI::ANSI(),aliases)
+stopifnot(grepl("primary_care_emergency",sql,fixed=TRUE),grepl("emergency_inpatient",sql,fixed=TRUE),
+ grepl("setting_conflict",sql,fixed=TRUE),regexpr("primary_care_emergency",sql)[1]<regexpr("fictional",sql)[1])
+cfg<-new_profile_config("cdm")
+cfg$table_states<-data.frame(table_name="procedure_occurrence",table_state="empty")
+stopifnot(HealthSystemCoverage:::zero_coverage_status("primary_care_procedures",cfg)=="not_detected")
+cfg$table_states$table_state<-"nonempty"
+stopifnot(HealthSystemCoverage:::zero_coverage_status("primary_care_procedures",cfg)=="unknown")
+spec<-health_system_spec()
+stopifnot(all(c("primary_care_emergency","emergency_care_unspecified","clinical_notes")%in%spec$component_id))
+comp<-HealthSystemCoverage:::empty_component_result(spec)
+comp$records[comp$component_id=="clinical_notes"]<-40
+out<-HealthSystemCoverage:::apply_source_component_quality(comp,cfg)
+stopifnot(out$status[out$component_id=="clinical_notes"]=="detected_unstructured")
+stopifnot(HealthSystemCoverage:::map_group_status("detected_unstructured")=="detected_unstructured",
+ HealthSystemCoverage:::map_group_status(c("detected_structured","detected_unstructured"))=="detected_partial")
+z<-as.data.frame(as.list(stats::setNames(rep(0,length(HealthSystemCoverage:::mapping_counts())),HealthSystemCoverage:::mapping_counts())))
+z$node_id<-"primary_care_emergency";z$records<-40;z$persons<-30
+positive<-HealthSystemCoverage:::apply_coverage_quality(comp,z,cfg)
+stopifnot(positive$status[positive$component_id==z$node_id]=="detected_structured")
+audit<-list(mortality_episode_evidence=data.frame(visit_concept_id=c(10,20,30),grain=c("event","person","unknown"),source_records=c(40,100,80),persons=c(30,20,15)))
+f<-HealthSystemCoverage:::context_person_findings(audit,cfg)
+stopifnot(f$records[1]==40,all(is.na(f$records[2:3])),f$persons[2]==20,
+ inherits(try(HealthSystemCoverage:::sum_finding_records(f),silent=TRUE),"try-error"))
+stopifnot(HealthSystemCoverage:::sum_finding_records(f[1,])==40)
+map<-data.frame(visit_concept_id=9203,source_value="FICTIONAL_DEATH",grain="person")
+cfg<-new_profile_config("cdm",discharge_outcome_map=map)
+case<-HealthSystemCoverage:::death_discharge_grain_case(DBI::ANSI(),cfg)
+stopifnot(grepl("FICTIONAL_DEATH",case,fixed=TRUE),grepl("'person'",case,fixed=TRUE))

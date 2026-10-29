@@ -9,9 +9,10 @@ print.health_system_profile <- function(x, ...) {
 
 map_group_status <- function(status) {
   represented <- status %in% c("detected_structured", "detected_partial")
-  problematic <- status %in% c("detected_misclassified",
-                                "detected_unstructured")
+  problematic <- status %in% "detected_misclassified"
   if (any(problematic)) return("detected_misclassified")
+  if(all(status=="detected_unstructured"))return("detected_unstructured")
+  if(any(status=="detected_unstructured"))return("detected_partial")
   if (all(status == "detected_structured")) return("detected_structured")
   if (any(represented)) return("detected_partial")
   if (all(status == "not_detected")) return("not_detected")
@@ -65,10 +66,9 @@ render_system_group <- function(group, components) {
                       , drop = FALSE]
   status <- map_group_status(child$status)
   represented <- sum(child$status %in% c("detected_structured",
-                                         "detected_partial"))
+                                         "detected_partial","detected_unstructured"))
   unavailable <- sum(child$status %in% c("not_detected",
-                                         "detected_misclassified",
-                                         "detected_unstructured"))
+                                         "detected_misclassified"))
   uncertain <- nrow(child) - represented - unavailable
   paste0(
     "<article class='system-node group-", html_escape(status), "'>",
@@ -118,6 +118,7 @@ write_profile_bundle <- function(profile, path) {
   utils::write.csv(suppress_small_cells(findings,profile$config$privacy_min_cell),
     file.path(path,"quality_findings.csv"),row.names=FALSE,na="")
   write_crosswalk_audit(profile$evidence$source_crosswalk$data,path)
+  write_context_audit(profile$evidence$context_audit$data,profile$config,path)
   components <- suppress_small_cells(profile$components,
                                      profile$config$privacy_min_cell)
   utils::write.csv(components, file.path(path, "health_system_components.csv"),
@@ -204,5 +205,9 @@ write_profile_bundle <- function(profile, path) {
   utils::write.csv(profile$config$source_aliases,file.path(path,"configured_source_aliases.csv"),row.names=FALSE)
   vm<-attr(profile$config$source_aliases,"visit_concept_map")
   if(!is.null(vm))utils::write.csv(vm,file.path(path,"configured_visit_concepts.csv"),row.names=FALSE)
+  if(!is.null(profile$config$discharge_outcome_map))utils::write.csv(profile$config$discharge_outcome_map,
+    file.path(path,"configured_discharge_outcomes.csv"),row.names=FALSE)
+  if(!is.null(profile$config$provider_specialty_map))utils::write.csv(profile$config$provider_specialty_map,
+    file.path(path,"configured_provider_specialties.csv"),row.names=FALSE)
   invisible(normalizePath(path, mustWork = TRUE))
 }

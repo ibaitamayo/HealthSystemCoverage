@@ -34,11 +34,11 @@ audit_source_crosswalk <- function(con,config) {
   findings<-empty_findings()
   if(summary$unresolved_records>0)findings<-rbind(findings,data.frame(component_id="__SOURCE_CROSSWALK__",area_id="__ALL__",
     rule_id="unresolved_crosswalk_target",scope="instance_crosswalk_not_clinical_counts",action="metadata_present",
-    in_scope=FALSE,excluded_by_filter=FALSE,rule_order=NA_integer_,incremental_exclusion=FALSE,records=as.double(summary$unresolved_records),persons=NA_real_))
+    in_scope=FALSE,excluded_by_filter=FALSE,rule_order=NA_integer_,incremental_exclusion=FALSE,records=as.double(summary$unresolved_records),persons=NA_real_,grain="event",count_unit="mapping_row"))
   incompatible<-sum(as.double(domains$mapping_records[domains$domain_check=="detected_misclassified"]))
   if(incompatible>0)findings<-rbind(findings,data.frame(component_id="__SOURCE_CROSSWALK__",area_id="__ALL__",
     rule_id="crosswalk_domain_contract_violation",scope="instance_crosswalk_not_clinical_counts",action="metadata_present",
-    in_scope=FALSE,excluded_by_filter=FALSE,rule_order=NA_integer_,incremental_exclusion=FALSE,records=incompatible,persons=NA_real_))
+    in_scope=FALSE,excluded_by_filter=FALSE,rule_order=NA_integer_,incremental_exclusion=FALSE,records=incompatible,persons=NA_real_,grain="event",count_unit="mapping_row"))
   list(status="assessed",summary=summary,by_vocabulary=by_vocab,domains=domains,
     candidates=candidates,determination=determination,expected_domains=expected,findings=findings,
     sources_examined="concept; source_to_concept_map (all rows for structural audit; active declared-vocabulary entries for event provenance)",

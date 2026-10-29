@@ -25,7 +25,8 @@ classify_visit_rows <- function(x, aliases) {
 }
 
 summarise_setting <- function(visits, setting) {
-  x <- visits[visits$logical_setting == setting, , drop = FALSE]
+  values<-switch(setting,primary_care=primary_settings(),inpatient=inpatient_settings(),emergency=hospital_emergency_settings(),setting)
+  x <- visits[visits$logical_setting %in% values, , drop = FALSE]
   if (!nrow(x)) return(NULL)
   list(
     records = sum(as.double(x$records), na.rm = TRUE),
@@ -65,8 +66,10 @@ evaluate_core_components <- function(spec, evidence) {
     v <- evidence$visit_settings$data
     mapping <- c(
       primary_care = "primary_care_encounters",
+      primary_care_emergency="primary_care_emergency",
       specialist_outpatient = "specialist_outpatient_encounters",
       emergency = "emergency_care", inpatient = "inpatient_admissions",
+      emergency_unspecified="emergency_care_unspecified",hospital_unspecified="hospital_encounters_unspecified",
       home_hospitalisation = "home_hospitalisation", palliative = "palliative_care",
       mental_health = "mental_health", maternal_prenatal = "maternal_prenatal"
     )
@@ -91,7 +94,8 @@ evaluate_core_components <- function(spec, evidence) {
   domain_component <- function(domain_data, setting, component_id,
                                evidence_label) {
     if (is.null(domain_data) || !nrow(domain_data)) return(NULL)
-    z <- domain_data[domain_data$logical_setting == setting, , drop = FALSE]
+    values<-switch(setting,primary_care=primary_settings(),inpatient=inpatient_settings(),emergency=hospital_emergency_settings(),setting)
+    z <- domain_data[domain_data$logical_setting %in% values, , drop = FALSE]
     if (!nrow(z)) {
       return(list(component_id = component_id, status = "unknown",
                   reliability = "unknown", persons = 0, records = 0,
@@ -139,8 +143,7 @@ evaluate_core_components <- function(spec, evidence) {
                           "outpatient_prescriptions",
                           "Drug records directly linked to primary-care visits; this does not by itself prove dispensing")
     if (!is.null(z)) out <- do.call(set_component, c(list(x = out), z))
-    hospital_settings <- c("inpatient", "emergency", "specialist_outpatient",
-                           "palliative")
+    hospital_settings <- hospital_settings()
     dz <- evidence$drugs$data[evidence$drugs$data$logical_setting %in%
                               hospital_settings, , drop = FALSE]
     if (nrow(dz)) {
@@ -227,6 +230,7 @@ profile_health_system <- function(con, config,
     stop("Currently supports PostgreSQL only")
   }
   schema <- config$cdm_schema
+  config<-prepare_context_config(con,config)
   probes <- list(config = config)
   if("source_crosswalk"%in%modules)probes$source_crosswalk<-safe_probe("source_crosswalk",function()audit_source_crosswalk(con,config))
   if ("event_dates" %in% modules) probes$event_dates <- list(name="event_dates",status="ok",data=review_event_dates(con,config))
@@ -249,6 +253,9 @@ profile_health_system <- function(con, config,
   components <- apply_adjudications(components, config$adjudications)
   # Quantitative output is refreshed from this run, independently of reviewed interpretation.
   components<-apply_coverage_quality(components,probes$coverage$data,config)
+  if(any(c("coverage","visits","drugs","context")%in%modules))
+    probes$context_audit<-safe_probe("context_audit",function()probe_context_audit(con,config))
+  components<-apply_context_quality(components,probes$context_audit$data,config)
   errors <- do.call(rbind, lapply(probes[vapply(probes, is.list, logical(1))], function(x) {
     if (is.null(x$status) || x$status != "error") return(NULL)
     data.frame(probe = x$name, error = x$error, stringsAsFactors = FALSE)
@@ -258,6 +265,7 @@ profile_health_system <- function(con, config,
       generated_at = Sys.time(), config = config,
       components = components, evidence = probes,
       findings = rbind(coverage_findings(probes$coverage$data,config),
+        context_person_findings(probes$context_audit$data,config),
         if(!is.null(probes$source_crosswalk$data$findings))probes$source_crosswalk$data$findings else empty_findings()),
       probe_errors = errors
     ),

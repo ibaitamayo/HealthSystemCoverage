@@ -131,6 +131,17 @@ table masking is not an anonymisation guarantee.
 
 ## Documentation and development
 
+### Classification and time context (0.2.6)
+
+Profiles now audit alias-driven visit reassignment, unambiguous Visit hierarchy
+classification, unclassified event mass, cutoff lag and pharmacy/mail-order
+dispensing type evidence. Thresholds and limitations are explicit; no cohort
+membership or OMOP records are changed. See
+[context audits](docs/CONTEXT_AUDITS.md) for configuration, scope and CSV evidence.
+The expanded [structured-source rules](docs/STRUCTURED_SOURCES.md) cover universal
+visit/establishment combinations, empty domains, costs versus copayment,
+unstructured notes, provider-linked services and non-additive discharge evidence.
+
 ### Scoped quality and mapping provenance (0.2.4)
 
 Profiles now distinguish nonzero source IDs, resolved source concepts, codes
