@@ -155,7 +155,8 @@ profile_health_areas <- function(con,config,areas,cohort=NULL,location_column="c
     c<-catalog[catalog$node_id==node,]
     z$node_id<-node;z$label<-c$label;z$level<-c$level;z$parent_id<-c$parent_id
     z<-enrich_coverage_stats(z,config)
-    z$status<-ifelse(z$records==0,"not_detected",ifelse(z$mapping_records>0 & z$valid_standard_records==z$mapping_records,"detected_structured","detected_partial"))
+    z$status<-ifelse(z$records==0,zero_coverage_status(node,config,ids),ifelse(z$mapping_records>0 & z$valid_standard_records==z$mapping_records,"detected_structured","detected_partial"))
+    z$issues<-ifelse(z$records==0 & z$status=="unknown",zero_setting_issue(),NA_character_)
     z$reliability<-vapply(seq_len(nrow(z)),function(i){
       temporal<-intersect(c("before_min_retained_records","after_cutoff_retained_records","before_birth_retained_records","end_before_start_retained_records"),names(z))
       bad_dates<-sum(as.double(unlist(z[i,temporal,drop=FALSE],use.names=FALSE)),na.rm=TRUE)>0

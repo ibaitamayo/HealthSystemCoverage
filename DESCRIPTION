@@ -1,7 +1,7 @@
 Package: HealthSystemCoverage
 Type: Package
 Title: Profile Health-System Coverage in OMOP Data Sources
-Version: 0.2.4
+Version: 0.2.5
 Authors@R: person("ibaitamayo", role = c("aut", "cre"),
     email = "ibai.tamayo.rodriguez@navarra.es")
 Description: Produces an auditable profile of which parts of a health system
@@ -20,6 +20,7 @@ Imports:
     DBI,
     jsonlite
 Suggests:
+    bit64,
     RPostgres,
     bupaR,
     processmapR,

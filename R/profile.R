@@ -93,10 +93,10 @@ evaluate_core_components <- function(spec, evidence) {
     if (is.null(domain_data) || !nrow(domain_data)) return(NULL)
     z <- domain_data[domain_data$logical_setting == setting, , drop = FALSE]
     if (!nrow(z)) {
-      return(list(component_id = component_id, status = "not_detected",
-                  reliability = "moderate", persons = 0, records = 0,
+      return(list(component_id = component_id, status = "unknown",
+                  reliability = "unknown", persons = 0, records = 0,
                   evidence = evidence_label,
-                  issues = "No directly linked records were detected"))
+                  issues = zero_setting_issue()))
     }
     valid <- sum(z$valid_standard_records, na.rm = TRUE)
     records <- sum(z$records, na.rm = TRUE)

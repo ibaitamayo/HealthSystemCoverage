@@ -36,3 +36,61 @@ masked<-HealthSystemCoverage:::suppress_small_cells(small,5)
 stopifnot(is.na(masked$source_coded_fraction))
 # Inspection policy never upgrades a reviewed unusable conclusion.
 stopifnot(HealthSystemCoverage:::cap_reliability("unusable","low")=="unusable")
+
+# PostgreSQL bigint mapping counters must not be copied as raw floating-point
+# bits into component columns (which would trigger false small-cell masking).
+round_trip <- function(input) {
+  input$start_date<-as.Date("2020-01-01")
+  input$end_date<-as.Date("2020-12-31")
+  config<-new_profile_config("cdm",privacy_min_cell=5)
+  measured<-HealthSystemCoverage:::enrich_coverage_stats(input,config)
+  components<-HealthSystemCoverage:::apply_coverage_quality(comp,measured,config)
+  one<-components[components$component_id==input$node_id,,drop=FALSE]
+  stopifnot(one$mapping_records==40,one$auditable_records==40)
+  profile<-structure(list(config=config,generated_at=Sys.time(),components=components,
+    evidence=list(person=list(status="ok",data=data.frame(persons=30)),
+      coverage=list(status="ok",data=measured)),findings=NULL,probe_errors=NULL),
+    class="health_system_profile")
+  dest<-tempfile("hsc-mapping-roundtrip-")
+  write_profile_bundle(profile,dest)
+  exported<-read.csv(file.path(dest,"health_system_components.csv"))
+  hierarchical<-read.csv(file.path(dest,"coverage_results.csv"))
+  leaf<-exported[exported$component_id==input$node_id,,drop=FALSE]
+  other<-hierarchical[hierarchical$node_id==input$node_id,,drop=FALSE]
+  fractions<-c("mapped_fraction","source_coded_fraction","source_resolved_fraction",
+    "source_crosswalked_fraction","assigned_target_crosswalked_fraction","auditable_fraction")
+  expected<-c(1,0,0,1,1,1)
+  stopifnot(identical(as.numeric(leaf[1,fractions]),expected),
+    identical(as.numeric(other[1,fractions]),expected),
+    leaf$provenance_reliability=="low",leaf$reliability=="low")
+}
+round_trip(z)
+if(requireNamespace("bit64",quietly=TRUE)) {
+  bigint<-z
+  for(nm in counts)bigint[[nm]]<-bit64::as.integer64(bigint[[nm]])
+  round_trip(bigint)
+}
+
+# An evaluated setting-dependent zero is unknown, not absent. A definition
+# with no probe remains not_assessed; direct-table zeros keep scoped absence.
+zeros<-z[rep(1,3),,drop=FALSE]
+zeros$node_id<-c("emergency_care","primary_care_procedures","mortality_all_cause")
+for(nm in c("records","persons",counts))zeros[[nm]]<-0
+zero_components<-HealthSystemCoverage:::apply_coverage_quality(comp,zeros,cfg)
+stopifnot(all(zero_components$status[match(zeros$node_id,zero_components$component_id)]==
+ c("unknown","unknown","not_detected")),
+ zero_components$status[zero_components$component_id=="community_dispensings"]=="not_assessed",
+ grepl("alias reassignment",zero_components$issues[zero_components$component_id=="emergency_care"],fixed=TRUE))
+for(id in HealthSystemCoverage:::visit_dependent_components())
+ stopifnot(HealthSystemCoverage:::zero_coverage_status(id,cfg)=="unknown")
+stopifnot(HealthSystemCoverage:::zero_coverage_status("group_emergency",cfg,"emergency_care")=="unknown",
+ HealthSystemCoverage:::zero_coverage_status("group_mortality",cfg,"mortality_all_cause")=="not_detected")
+explicit<-cfg
+explicit$component_rules<-data.frame(component_id="emergency_care",table="observation",concept_id=1)
+stopifnot(HealthSystemCoverage:::zero_coverage_status("emergency_care",explicit)=="not_detected")
+# Privacy masking remains active for genuinely small mapping denominators.
+tiny<-HealthSystemCoverage:::enrich_coverage_stats(z,cfg)
+tiny$mapping_records<-2
+tiny<-HealthSystemCoverage:::suppress_small_cells(tiny,5)
+stopifnot(all(is.na(tiny[,c("mapped_fraction","source_coded_fraction","source_resolved_fraction",
+ "source_crosswalked_fraction","assigned_target_crosswalked_fraction","auditable_fraction")])))

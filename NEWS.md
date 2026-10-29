@@ -1,3 +1,15 @@
+# HealthSystemCoverage 0.2.5
+
+* Convert PostgreSQL integer64 mapping counts before copying them to numeric
+  component columns. Component CSV fractions now survive small-cell masking
+  when their counts are publishable; genuinely small cells remain suppressed.
+* Report zero matches from visit-setting-dependent definitions as unknown,
+  not not_detected, consistently for database, cohort and geographic profiles.
+  Retain zero counts and explain classifier/alias uncertainty. Unassessed
+  definitions remain not_assessed. Explicit concept-rule and direct-table zeros
+  remain not_detected under their stated definitions, not proof of absent care.
+* Add CSV round-trip and integer64 regression tests for all six mapping fractions.
+
 # HealthSystemCoverage 0.2.4
 
 * Add visible source-coded, resolved-source and crosswalk-provenance fractions,

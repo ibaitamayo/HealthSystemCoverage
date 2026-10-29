@@ -21,7 +21,7 @@ profile_cohort <- function(con,config,cohort,audit_event_dates=FALSE) {
     if(!nrow(z))next
     components$persons[i]<-z$persons[1];components$records[i]<-z$records[1]
     components$start_date[i]<-as.Date(z$start_date[1]);components$end_date[i]<-as.Date(z$end_date[1])
-    components$status[i]<-if(z$records[1]>0)"detected_partial" else "not_detected"
+    components$status[i]<-if(z$records[1]>0)"detected_partial" else zero_coverage_status(components$component_id[i],config)
     components$evidence[i]<-"Current cohort query under an explicit definition; clinical event start dates restricted to cohort intervals."
     components$issues[i]<-"Detection does not establish semantic validity, clinical completeness or a disease-specific pathway. Zero means no match under this definition."
   }

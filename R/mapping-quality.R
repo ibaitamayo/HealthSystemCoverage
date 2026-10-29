@@ -115,12 +115,43 @@ enrich_coverage_stats <- function(measured,config) {
   measured
 }
 
+# A zero from a setting classifier is not evidence of absent care: aliases and
+# unrecognised visit concepts can move or hide the matching records. Explicit
+# concept rules replace the setting definition and have their own scoped zero.
+visit_dependent_components <- function() c(
+  "primary_care_encounters","inpatient_admissions","emergency_care",
+  "specialist_outpatient_encounters","home_hospitalisation","palliative_care",
+  "mental_health","maternal_prenatal_care","primary_care_diagnoses",
+  "inpatient_diagnoses","specialist_outpatient_diagnoses",
+  "outpatient_prescriptions","primary_care_procedures","inpatient_procedures",
+  "hospital_medications")
+
+zero_coverage_status <- function(node,config,assessed_children=NULL) {
+  ids<-node
+  member<-coverage_membership()
+  if(node%in%c(member$group_id,member$area_id)) {
+    ids<-member$component_id[member$group_id==node|member$area_id==node]
+    if(!is.null(assessed_children))ids<-intersect(ids,assessed_children)
+  }
+  explicit<-if(is.null(config$component_rules))character() else config$component_rules$component_id
+  if(any(ids%in%setdiff(visit_dependent_components(),explicit)))"unknown" else "not_detected"
+}
+
+zero_setting_issue <- function() paste(
+  "No records matched the configured visit-setting classification after active filters.",
+  "Unrecognised settings or alias reassignment cannot be distinguished from absence;",
+  "zero matches do not establish absence of this care component.")
+
 apply_coverage_quality <- function(components,measured,config) {
   if(is.null(measured)||!nrow(measured))return(components)
   for(i in seq_len(nrow(components))) {
     z<-measured[measured$node_id==components$component_id[i],,drop=FALSE]
     if(nrow(z)!=1L)next
-    for(nm in intersect(c("persons","records","start_date","end_date",mapping_counts()),names(z)))components[[nm]][i]<-z[[nm]][1]
+    # DBI bigint columns can be bit64::integer64. Subassignment into a numeric
+    # column copies their underlying bits unless explicitly converted.
+    for(nm in intersect(c("persons","records","start_date","end_date",mapping_counts()),names(z)))
+      components<-do.call(set_component,c(list(x=components,
+        component_id=components$component_id[i]),stats::setNames(list(z[[nm]][1]),nm)))
     q<-mapping_quality(z,config)
     for(nm in intersect(names(q),quality_fields()))components[[nm]][i]<-q[[nm]]
     if(all(c("mapping_records","valid_standard_records")%in%names(z))&&z$mapping_records>0) {
@@ -132,7 +163,10 @@ apply_coverage_quality <- function(components,measured,config) {
       reviewed_ids<-if(is.null(config$adjudications))character() else config$adjudications$component_id
       components$reliability[i]<-if(components$component_id[i]%in%reviewed_ids)cap_reliability(components$reliability[i],base) else base
     }
-    if(z$records==0)components$status[i]<-"not_detected"
+    if(z$records==0) {
+      components$status[i]<-zero_coverage_status(components$component_id[i],config)
+      components$reliability[i]<-"unknown"
+    }
     temporal<-intersect(c("before_min_retained_records","after_cutoff_retained_records","before_birth_retained_records","end_before_start_retained_records"),names(z))
     retained_defects<-sum(as.double(unlist(z[1,temporal,drop=FALSE],use.names=FALSE)),na.rm=TRUE)
     if(length(temporal)&&retained_defects>0)
@@ -151,7 +185,9 @@ apply_coverage_quality <- function(components,measured,config) {
     reviewed_issue<-if(!is.null(reviewed)&&"issues"%in%names(reviewed))reviewed$issues[reviewed$component_id==components$component_id[i]] else character()
     reviewed_issue<-reviewed_issue[!is.na(reviewed_issue)]
     if(!components$component_id[i]%in%c("population_registry","demographics","geographic_assignment","longitudinal_follow_up"))
-      components$issues[i]<-paste(c("Counts and quality measures use the selected component/window after active filters; raw diagnostics are separate. Recorded presence does not establish complete capture or service provenance.",reviewed_issue,q$quality_issue[!is.na(q$quality_issue)]),collapse=" ")
+      components$issues[i]<-paste(c("Counts and quality measures use the selected component/window after active filters; raw diagnostics are separate. Recorded presence does not establish complete capture or service provenance.",
+        if(z$records==0&&components$status[i]=="unknown")zero_setting_issue(),
+        reviewed_issue,q$quality_issue[!is.na(q$quality_issue)]),collapse=" ")
   }
   components
 }

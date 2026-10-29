@@ -51,6 +51,16 @@ canonical output labels.
 - `detected_structured`: structured records are present.
 - `unknown`: the evidence cannot distinguish presence from absence.
 
+Since 0.2.5, zero matches for a visit-setting-dependent definition are
+`unknown`, with zero counts retained. The current classifier and alias
+precedence can leave settings unrecognised or reassign their records; a zero
+does not establish absence. This applies to database, cohort and geographic
+profiles, including geographic aggregates containing these definitions.
+Components without an evaluated definition remain `not_assessed`. Direct-table
+and explicit concept-rule zeros remain `not_detected` under those definitions
+and active windows/filters, never a claim that the service does not exist.
+This safeguard does not replace the deferred alias-reclassification audit.
+
 These statuses must be interpreted together with `reliability` (`high`,
 `moderate`, `low`, `unusable`).
 
