@@ -1,3 +1,12 @@
+# HealthSystemCoverage 0.2.2
+
+* Add opt-in event calendar bounds with a supplied ETL/database-generation date
+  or a recorded Sys.Date() fallback resolved anew for each configuration.
+* Keep future drug end dates; do not exempt drug start dates or pre-minimum ends.
+* Apply bounds in quantitative coverage and visit/process extraction, without
+  changing cohort membership or its denominator.
+* Add optional domain-level aggregate exclusion audits and report disclosure.
+
 # HealthSystemCoverage 0.2.1
 
 * Prepare a standalone GitHub-installable R package.

@@ -131,6 +131,29 @@ table masking is not an anonymisation guarantee.
 
 ## Documentation and development
 
+### Optional event calendar exclusions
+
+After selecting eligible people, enable a calendar filter with
+`new_profile_config(..., event_date_min="1900-01-01", database_cutoff=etl_date)`.
+`etl_date` may be a verified ETL, extraction or database-generation date. If none
+is available, omit `database_cutoff`: it resolves to `Sys.Date()` when the config
+is created. Recreate the config for each run. The resolved date and its origin
+are recorded in the report; it is never inferred from the latest event.
+This option filters
+quantitative coverage events and extracted process contacts, not people. It
+preserves the selected population denominator. Drug end dates may exceed the
+cutoff; drug starts may not. Pre-minimum drug ends are not exempt.
+
+Use `review_event_dates(con, config, cohort)` for optional domain audit counts,
+or `profile_cohort(con, config, cohort, audit_event_dates=TRUE)` to attach them
+to report exports. A whole-database profile can request the `event_dates`
+module alongside `coverage`. Audits review all records of selected people,
+including those outside cohort windows; counts are not component attrition.
+The extra full-domain scan is optional; `note` is not scanned by default and can
+be requested explicitly via the audit's `tables` argument. Existing diagnostic probes remain raw
+source diagnostics, clearly distinguished from filtered quantitative coverage.
+This rule does not remove missing dates or resolve other temporal conflicts.
+
 See [cohort workflow](docs/COHORT_WORKFLOW.md), [configuration](docs/CONFIGURATION.md),
 [conceptual model](docs/DESIGN.md), [privacy guidance](SECURITY.md) and
 [contributing](CONTRIBUTING.md). Source functions are inspired by the BARDENA

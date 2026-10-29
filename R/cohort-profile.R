@@ -1,4 +1,4 @@
-profile_cohort <- function(con,config,cohort) {
+profile_cohort <- function(con,config,cohort,audit_event_dates=FALSE) {
   assert_connection(con)
   stopifnot(inherits(config,"health_system_profile_config"),inherits(cohort,"hsc_cohort"))
   if(config$dbms!="postgresql")stop("Currently supports PostgreSQL only")
@@ -10,6 +10,10 @@ profile_cohort <- function(con,config,cohort) {
   if(size$persons==0)stop("Selected cohort is empty")
   probes<-list(person=list(name="person",status="ok",data=data.frame(persons=size$persons)),
     coverage=safe_probe("coverage",function()probe_coverage(con,config,cohort)))
+  if(!is.null(config$event_date_min) && identical(probes$coverage$status,"error"))
+    stop("Filtered coverage query failed; no unfiltered fallback is permitted")
+  if(audit_event_dates)probes$event_dates<-list(name="event_dates",status="ok",
+    data=review_event_dates(con,config,cohort))
   components<-empty_component_result(health_system_spec())
   if(!is.null(probes$coverage$data))for(i in seq_len(nrow(components))) {
     z<-probes$coverage$data[probes$coverage$data$node_id==components$component_id[i],,drop=FALSE]

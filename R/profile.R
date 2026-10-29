@@ -228,6 +228,9 @@ profile_health_system <- function(con, config,
   }
   schema <- config$cdm_schema
   probes <- list(config = config)
+  if ("event_dates" %in% modules) probes$event_dates <- list(name="event_dates",status="ok",data=review_event_dates(con,config))
+  if (!is.null(config$event_date_min) && !"coverage" %in% modules)
+    stop("Event date filtering requires the coverage module for filtered quantitative results")
   if ("inventory" %in% modules) probes$inventory <- safe_probe("inventory", function() probe_inventory(con, config))
   if ("person" %in% modules && table_exists(con, schema, "person")) probes$person <- safe_probe("person", function() probe_person(con, config))
   if ("observation_period" %in% modules && table_exists(con, schema, "observation_period")) probes$observation_period <- safe_probe("observation_period", function() probe_observation_period(con, config))
@@ -239,6 +242,8 @@ profile_health_system <- function(con, config,
   if ("death" %in% modules) probes$death_setting <- safe_probe("death_setting", function() probe_death_setting(con, config))
   if ("note_schema" %in% modules) probes$note_schema <- safe_probe("note_schema", function() probe_note_schema(con, config))
   if ("coverage" %in% modules) probes$coverage <- safe_probe("coverage", function() probe_coverage(con, config))
+  if (!is.null(config$event_date_min) && identical(probes$coverage$status,"error"))
+    stop("Filtered coverage query failed; no unfiltered fallback is permitted")
   components <- evaluate_core_components(health_system_spec(), probes)
   components <- apply_adjudications(components, config$adjudications)
   # Quantitative output is refreshed from this run, independently of reviewed interpretation.

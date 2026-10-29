@@ -11,7 +11,8 @@ collect_care_events <- function(con,config,cohort,components=character(),setting
     "FROM ",qualified_table(con,s,"visit_occurrence")," v JOIN cw ON cw.subject_id=v.person_id ",
     "JOIN ",qualified_table(con,s,"person")," p ON p.person_id=v.person_id ",
     "LEFT JOIN ",qualified_table(con,s,"care_site")," cs ON cs.care_site_id=v.care_site_id ",
-    "WHERE v.visit_start_date BETWEEN cw.cohort_start_date AND cw.cohort_end_date")
+    "WHERE v.visit_start_date BETWEEN cw.cohort_start_date AND cw.cohort_end_date AND ",
+    event_date_predicate(con,config,"visit_occurrence",alias="v"))
   out<-DBI::dbGetQuery(con,visits)
   if(length(components)) {
     queries<-coverage_event_queries(con,config,cohort)

@@ -11,7 +11,7 @@ cohort_from_table(schema, table, cohort_id, name = table)
 cohort_from_data(data, cohort_id = NULL, name = "Imported OHDSI cohort")
 review_cohort(con, config, cohort, cutoff = Sys.Date())
 apply_cohort_filters(con, review, rules)
-profile_cohort(con, config, cohort)
+profile_cohort(con, config, cohort, audit_event_dates = FALSE)
 collect_care_events(con, config, cohort, components = character(),
   setting_labels = NULL)
 }
@@ -23,6 +23,7 @@ collect_care_events(con, config, cohort, components = character(),
 \item{con}{Open PostgreSQL DBI connection, preferably a verified read-only session.}
 \item{config}{Configuration from new_profile_config.}
 \item{cohort}{Cohort source object; repeated membership intervals remain separate.}
+\item{audit_event_dates}{Also scan clinical domains for calendar-bound exclusions among selected people. Optional because the full domain audit can be expensive. Requires event_date_min and database_cutoff.}
 \item{cutoff}{Declared maximum plausible date.}
 \item{review}{Result of review_cohort.}
 \item{rules}{Explicit character vector of accepted exclusion rules. No rules are automatically approved.}

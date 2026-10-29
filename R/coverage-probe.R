@@ -8,6 +8,9 @@ coverage_event_queries <- function(con, config, cohort=NULL) {
   put <- function(cid, sql) queries[[cid]] <<- sql
   person_join <- paste0(" JOIN ", tab("person"), " p ON p.person_id=d.person_id ")
   event <- function(table, key, date, predicate = "TRUE", extra = "") {
+    if(!is.null(config$event_date_min) && table %in% names(event_date_fields()))
+      predicate <- paste0("(",predicate,") AND ",event_date_predicate(con,config,table,
+        columns=table_columns(con,s,table)))
     if(!is.null(cohort)) {
       window <- if(is.null(date)) "TRUE" else if(table=="observation_period")
         "d.observation_period_start_date<=cw.cohort_end_date AND d.observation_period_end_date>=cw.cohort_start_date" else

@@ -81,6 +81,7 @@ write_architectural_report <- function(profile,path) {
     generated=format(profile$generated_at,tz="UTC"), errors=if(is.null(profile$probe_errors))0L else nrow(profile$probe_errors)),auto_unbox=TRUE)
   meta<-gsub("<","\\u003c",meta,fixed=TRUE)
   out<-sub("__META__",meta,out,fixed=TRUE)
+  out<-sub("</body>",paste0(event_filter_summary_html(profile),"</body>"),out,fixed=TRUE)
   writeLines(out,file.path(path,"profile.html"),useBytes=TRUE)
   invisible(path)
 }

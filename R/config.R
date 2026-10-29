@@ -4,7 +4,8 @@
 #' @param source_aliases Optional data frame with columns `source_type` and
 #'   `pattern`. Patterns are case-insensitive PostgreSQL regular expressions.
 #' @param privacy_min_cell Minimum cell count shown in exports.
-#' @param database_cutoff Optional known database cut-off date.
+#' @param database_cutoff Optional known ETL/database-generation date. With event
+#'   filtering enabled, NULL resolves to Sys.Date() at configuration creation.
 #' @param dbms Database engine. The first implementation supports PostgreSQL.
 #' @return A validated configuration list.
 #' @export
@@ -16,10 +17,23 @@ new_profile_config <- function(cdm_schema,
                                dbms = "postgresql",
                                component_rules = NULL,
                                source_name = NULL,
-                               visit_concept_map = NULL) {
+                               visit_concept_map = NULL,
+                               event_date_min = NULL) {
   stopifnot(is.character(cdm_schema), length(cdm_schema) == 1L, nzchar(cdm_schema))
   stopifnot(is.numeric(privacy_min_cell), length(privacy_min_cell) == 1L,
             privacy_min_cell >= 0)
+  cutoff_source <- if(is.null(database_cutoff)) "not_set" else "provided"
+  if (!is.null(event_date_min)) {
+    if(is.null(database_cutoff)) {
+      database_cutoff <- Sys.Date()
+      cutoff_source <- "Sys.Date() fallback"
+    }
+    event_date_min <- as.Date(event_date_min)
+    cutoff <- as.Date(database_cutoff)
+    if (length(event_date_min)!=1L || anyNA(event_date_min) ||
+        length(cutoff)!=1L || anyNA(cutoff) || cutoff<event_date_min)
+      stop("Event filtering requires valid ordered event_date_min and database_cutoff dates")
+  }
   if (is.null(source_aliases)) source_aliases <- default_source_aliases()
   required <- c("source_type", "pattern")
   if (!all(required %in% names(source_aliases))) {
@@ -52,6 +66,8 @@ new_profile_config <- function(cdm_schema,
       adjudications = adjudications,
       privacy_min_cell = as.integer(privacy_min_cell),
       database_cutoff = as.Date(database_cutoff),
+      database_cutoff_source = cutoff_source,
+      event_date_min = event_date_min,
       dbms = tolower(dbms),
       component_rules = component_rules,
       source_name = source_name
