@@ -30,6 +30,9 @@
 'use strict';
 const data=__AREA_PAYLOAD__;
 const rows=data.results,features=data.map.features,ns='http://www.w3.org/2000/svg';
+const compact=data.mode==='summary';
+const representationLabels={represented:'Represented',represented_with_limits:'Represented with limitations',not_detected:'Not detected under assessed definition',not_evaluable:'Not evaluable'};
+if(compact){const header=document.querySelector('table thead tr');header.replaceChildren();for(const label of ['Activity','People with data','Population','% population','Representation','Main limitation']){const th=document.createElement('th');th.textContent=label;header.append(th);}}
 const byId=id=>document.getElementById(id),metric=byId('indicator'),population=byId('population');
 const number=new Intl.NumberFormat('en-GB'),decimal=new Intl.NumberFormat('en-GB',{minimumFractionDigits:1,maximumFractionDigits:1});
 const finite=v=>typeof v==='number'&&Number.isFinite(v);
@@ -82,7 +85,8 @@ function update(){
  byId('summary-title').textContent='Single profile · '+head.area_name;byId('denominator').textContent='N = '+count(head.population);
  const table=byId('summary');table.replaceChildren();
  group.forEach(r=>{const tr=document.createElement('tr');tr.className=r.level;
-  [r.label,count(r.persons),count(r.population),pct(r.percentage),count(r.records),r.reliability||'Unknown',pct(finite(r.source_coded_fraction)?100*r.source_coded_fraction:null),pct(finite(r.source_resolved_fraction)?100*r.source_resolved_fraction:null),pct(finite(r.source_crosswalked_fraction)?100*r.source_crosswalked_fraction:null),pct(finite(r.assigned_target_crosswalked_fraction)?100*r.assigned_target_crosswalked_fraction:null)].forEach((value,i)=>{const td=document.createElement('td');td.textContent=value;if(i)td.className='number';tr.append(td)});table.append(tr)});
+  const values=compact?[r.label,count(r.persons),count(r.population),pct(r.percentage),representationLabels[r.representation]||'Not evaluable',r.limitation]:[r.label,count(r.persons),count(r.population),pct(r.percentage),count(r.records),r.reliability||'Unknown',pct(finite(r.source_coded_fraction)?100*r.source_coded_fraction:null),pct(finite(r.source_resolved_fraction)?100*r.source_resolved_fraction:null),pct(finite(r.source_crosswalked_fraction)?100*r.source_crosswalked_fraction:null),pct(finite(r.assigned_target_crosswalked_fraction)?100*r.assigned_target_crosswalked_fraction:null)];
+  values.forEach((value,i)=>{const td=document.createElement('td');td.textContent=value;if(i&&i<4)td.className='number';tr.append(td)});table.append(tr)});
  const un=populations.filter(r=>r.area_id!=='__ALL__'&&!r.mapped);
  byId('unmapped').textContent=un.length?'Not located in mapped polygons: '+un.map(r=>r.area_name+' (N='+count(r.population)+')').join('; ')+'. Retained in overall population.':'';
  byId('selection-note').textContent='Select an area to filter the single profile below.';
@@ -90,7 +94,7 @@ function update(){
 metric.addEventListener('change',update);population.addEventListener('change',update);
 byId('download').addEventListener('click',()=>{
  const quote=v=>'"'+String(v??'').replaceAll('"','""')+'"';
- const fields=['area_id','area_name','node_id','parent_id','level','label','persons','population','percentage','records','measurement_status','reliability','mapping_records','source_coded_fraction','source_resolved_fraction','source_crosswalked_fraction','assigned_target_crosswalked_fraction','mapping_audit_policy'];
+ const fields=compact?['area_id','area_name','node_id','parent_id','level','label','persons','population','percentage','representation','limitation','measurement_status']:['area_id','area_name','node_id','parent_id','level','label','persons','population','percentage','records','measurement_status','reliability','mapping_records','source_coded_fraction','source_resolved_fraction','source_crosswalked_fraction','assigned_target_crosswalked_fraction','mapping_audit_policy'];
  const content=[fields.join(','),...rows.filter(r=>r.area_id===population.value).map(r=>fields.map(k=>quote(r[k])).join(','))].join('\r\n');
  const url=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='selected-area-results.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });

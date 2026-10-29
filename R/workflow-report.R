@@ -25,8 +25,9 @@ selection_flow_svg <- function(attrition,drawn_cases=NULL,drawn_persons=NULL) {
 write_cohort_workflow <- function(profile,selection,events,path) {
   if(!requireNamespace("htmlwidgets",quietly=TRUE))stop("htmlwidgets is required for saving process maps")
   dir.create(path,recursive=TRUE,showWarnings=FALSE)
-  write_profile_bundle(profile,path)
   a<-if(is.data.frame(selection))selection else selection$attrition
+  profile$config$cohort_attrition<-a
+  write_profile_bundle(profile,path)
   utils::write.csv(a,file.path(path,"cohort_attrition.csv"),row.names=FALSE)
   summaries<-list()
   for(mode in c("first","all")) {

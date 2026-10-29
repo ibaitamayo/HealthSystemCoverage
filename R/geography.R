@@ -197,10 +197,12 @@ profile_health_areas <- function(con,config,areas,cohort=NULL,location_column="c
   result
 }
 
-write_area_report <- function(profile,path) {
+write_area_report <- function(profile,path,level=c("summary","exhaustive")) {
+  level<-match.arg(level)
   stopifnot(inherits(profile,"hsc_area_profile"))
   dir.create(path,recursive=TRUE,showWarnings=FALSE)
   d<-area_coverage_results(profile)
+  if(level=="summary")return(write_summary_area_report(profile,path,d))
   utils::write.csv(d,file.path(path,"area_coverage_results.csv"),row.names=FALSE,na="")
   findings<-if(is.null(profile$findings))empty_findings() else profile$findings
   utils::write.csv(suppress_small_cells(findings,profile$privacy_min_cell),file.path(path,"quality_findings.csv"),row.names=FALSE,na="")

@@ -14,7 +14,7 @@ area_coverage_results(profile)
 profile_health_areas(con, config, areas, cohort = NULL,
   location_column = "county", crosswalk = NULL, components = NULL,
   population_note = "", attribution = "")
-write_area_report(profile, path)
+write_area_report(profile, path, level = c("summary", "exhaustive"))
 }
 \arguments{
 \item{path}{For reading, a local GeoJSON, shapefile, zipped shapefile or sf object. For writing, an output directory.}
@@ -33,6 +33,7 @@ write_area_report(profile, path)
 \item{location_column}{One of county, city, state, zip, location_source_value or country_source_value in LOCATION. Selection is a provider decision; county does not universally mean health area.}
 \item{crosswalk}{Optional data frame with unique location_value and area_id. If supplied, unmatched source values enter __UNKNOWN__. If omitted, values are matched directly to geometry IDs and unmapped groups are retained.}
 \item{components}{Optional explicit subset of available leaf definitions. Parent groups are computed as unions of the assessed children, never sums. NULL uses all available definitions.}
+\item{level}{Summary by default, with a compact table and linked validation under audit/. Use \code{exhaustive} for legacy technical exports.}
 }
 \description{Produces one geographic comparison and one filterable profile/table, not a separate report per area. Geographic boundaries, population assignments and health-system definitions remain separate configurable inputs.}
 \details{The optional sf dependency is needed only to read/prepare boundaries. Missing CRS, duplicate IDs and empty/nonpolygon geometries are rejected. Boundaries are transformed to EPSG:3857 for a standalone SVG display; this display projection is intended for nonpolar regional maps. Source geometries are not bundled with the package.

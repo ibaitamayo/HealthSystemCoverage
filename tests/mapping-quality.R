@@ -52,7 +52,7 @@ round_trip <- function(input) {
       coverage=list(status="ok",data=measured)),findings=NULL,probe_errors=NULL),
     class="health_system_profile")
   dest<-tempfile("hsc-mapping-roundtrip-")
-  write_profile_bundle(profile,dest)
+  write_profile_bundle(profile,dest,level="exhaustive")
   exported<-read.csv(file.path(dest,"health_system_components.csv"))
   hierarchical<-read.csv(file.path(dest,"coverage_results.csv"))
   leaf<-exported[exported$component_id==input$node_id,,drop=FALSE]

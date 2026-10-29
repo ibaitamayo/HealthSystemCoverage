@@ -62,6 +62,21 @@ write_profile_bundle(profile, "system-report")
 dbDisconnect(con)
 ```
 
+Since 0.2.7 the default report focuses on health-system representation. It writes
+one compact hierarchical CSV, the architectural figure, and attached evaluation
+evidence in `audit/`. Groups expand to activities; counts use unique-person unions
+and are not additive. Population percentages are not completeness or research
+fitness scores. No service is declared non-applicable from missing data.
+
+The default export schema has changed. Existing scripts needing technical fields
+can use `coverage_results(profile)` or the legacy bundle in a fresh directory:
+
+```r
+write_profile_bundle(profile, "system-report-exhaustive", level = "exhaustive")
+# Geographic reports use the same default; request legacy exports explicitly:
+# write_area_report(area_profile, "area-report-exhaustive", level = "exhaustive")
+```
+
 Use a SELECT-only account. Do not copy patient credentials into source files,
 issues or notebooks. Schema/source recognition and activity definitions must
 be configured and reviewed locally; no Spanish, English or other label patterns

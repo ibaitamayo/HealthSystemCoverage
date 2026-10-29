@@ -111,7 +111,7 @@ render_system_area <- function(area, groups, components) {
 #' @param path Existing or new output directory.
 #' @return Invisibly, the normalized output directory.
 #' @export
-write_profile_bundle <- function(profile, path) {
+write_profile_bundle_exhaustive <- function(profile, path) {
   if (!inherits(profile, "health_system_profile")) stop("profile has the wrong class")
   dir.create(path, recursive = TRUE, showWarnings = FALSE)
   findings<-if(is.null(profile$findings))empty_findings() else profile$findings

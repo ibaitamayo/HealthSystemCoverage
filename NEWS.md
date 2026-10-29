@@ -1,3 +1,22 @@
+# HealthSystemCoverage 0.2.7
+
+* Default exports now focus on health-system representation: an architectural
+  view, one 12-column hierarchical table, and attached evaluation evidence under
+  audit/. Clinical queries, cohort eligibility and measured counts are unchanged.
+* Show people with evidence, population percentages, observed dates and one
+  concise limitation. Groups preserve SQL unique-person unions; counts at
+  different levels are not additive. Percentages never mean system completeness.
+* Use four presentation states, with absence and inability to evaluate listed
+  separately. Unknown/unassessed activities are not converted to absent services;
+  no non-applicability is invented. Research fitness is not inferred from presence.
+* Move mapping fractions, detailed flags, definitions and existing validation out
+  of the main table into a linked technical annex. Preserve suppressed cells.
+* BREAKING default export schema: use write_profile_bundle(...,
+  level = "exhaustive") for legacy technical CSVs. Choose a fresh directory when
+  changing levels so old duplicate files cannot silently survive.
+* Cohort workflow passes aggregate selection counts to the report. Map and care
+  process modules remain available separately; their evaluation logic is unchanged.
+
 # HealthSystemCoverage 0.2.6
 
 * Combine coded visit modality and establishment type before source-text aliases:

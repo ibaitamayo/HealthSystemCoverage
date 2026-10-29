@@ -1,7 +1,8 @@
 coverage_status_colour <- function(status) {
   colours <- c(detected_structured="#dcece2",detected_partial="#f5e5c7",
     detected_misclassified="#f3cba8",detected_unstructured="#f3cba8",
-    not_detected="#efced1",unknown="#e4e7ea",not_assessed="#edf0f2")
+    not_detected="#efced1",unknown="#e4e7ea",not_assessed="#edf0f2",
+    represented="#dcece2",represented_with_limits="#f5e5c7",not_evaluable="#e4e7ea")
   z <- unname(colours[status]);z[is.na(z)] <- "#edf0f2";z
 }
 
