@@ -9,6 +9,7 @@ profile_cohort <- function(con,config,cohort,audit_event_dates=FALSE) {
   size<-cohort_size(con,q)
   if(size$persons==0)stop("Selected cohort is empty")
   probes<-list(person=list(name="person",status="ok",data=data.frame(persons=size$persons)),
+    source_crosswalk=safe_probe("source_crosswalk",function()audit_source_crosswalk(con,config)),
     coverage=safe_probe("coverage",function()probe_coverage(con,config,cohort)))
   if(!is.null(config$event_date_min) && identical(probes$coverage$status,"error"))
     stop("Filtered coverage query failed; no unfiltered fallback is permitted")
@@ -27,7 +28,9 @@ profile_cohort <- function(con,config,cohort,audit_event_dates=FALSE) {
   # Global site adjudications must not be promoted to findings in this cohort.
   config$analysis_population<-list(name=cohort$name,persons=size$persons,episodes=size$episodes)
   config$adjudications<-NULL
-  errors<-if(identical(probes$coverage$status,"error"))data.frame(probe="coverage",error=probes$coverage$error) else NULL
+  components<-apply_coverage_quality(components,probes$coverage$data,config)
+  errors<-do.call(rbind,lapply(probes,function(p)if(identical(p$status,"error"))data.frame(probe=p$name,error=p$error) else NULL))
   structure(list(generated_at=Sys.time(),config=config,components=components,
-    evidence=probes,probe_errors=errors),class="health_system_profile")
+    evidence=probes,findings=rbind(coverage_findings(probes$coverage$data,config),
+      if(!is.null(probes$source_crosswalk$data$findings))probes$source_crosswalk$data$findings else empty_findings()),probe_errors=errors),class="health_system_profile")
 }

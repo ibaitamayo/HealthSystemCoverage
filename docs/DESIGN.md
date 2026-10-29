@@ -54,6 +54,13 @@ canonical output labels.
 These statuses must be interpreted together with `reliability` (`high`,
 `moderate`, `low`, `unusable`).
 
+Since 0.2.4 an explicit local-audit policy can mark undocumented mapping
+provenance unusable without asserting clinical invalidity. Source concepts and
+crosswalk documentation are examined separately; a crosswalk with ambiguous
+candidates is documented but not necessarily determined. Crosswalk structural
+findings do not automatically change clinical component status. See
+[quality and provenance](QUALITY_AND_PROVENANCE.md) for denominators and scope.
+
 Representation and usability are separate output axes. The field
 `fitness_for_research` uses `not_evaluated`, `suitable`, `limited` or
 `unsuitable`. Where evidence permits, provenance, linkage and semantic

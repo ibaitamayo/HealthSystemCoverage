@@ -20,7 +20,7 @@ write_area_report(profile, path)
 \item{path}{For reading, a local GeoJSON, shapefile, zipped shapefile or sf object. For writing, an output directory.}
 \item{id_column, name_column}{Geometry columns containing unique area identifiers and display names. IDs must not equal reserved values __ALL__ or __UNKNOWN__.}
 \item{simplify}{Optional nonnegative display simplification tolerance in metres.}
-\item{data}{Aggregate data frame with area_id, node_id, label, persons and population. Optional records, area_name, level and parent_id. Include explicit global rows identified by __ALL__, plus the same exclusive area groups for every indicator. Counts are numeric nonnegative integers or NA.}
+\item{data}{Aggregate data frame with area_id, node_id, label, persons and population. Optional records, area_name, level, parent_id and explicit provenance counts/fractions. Include explicit global rows identified by __ALL__, plus the same exclusive area groups for every indicator. Counts are numeric nonnegative integers or NA.}
 \item{areas}{Geometry object returned by read_health_areas.}
 \item{privacy_min_cell}{Suppress positive small cells, small complements and small area denominators in exports.}
 \item{source_name}{Display title; no patient identifiers.}
@@ -28,7 +28,7 @@ write_area_report(profile, path)
 \item{attribution}{Provider-supplied cartographic attribution and licence.}
 \item{profile}{Object returned by area_coverage_from_data or profile_health_areas.}
 \item{con}{Open PostgreSQL DBI connection; use a verified read-only session.}
-\item{config}{Configuration from new_profile_config. Accepted event calendar bounds are respected.}
+\item{config}{Configuration from new_profile_config. Calendar/birth bounds and mapping audit policy are respected.}
 \item{cohort}{Optional instantiated OHDSI cohort; NULL uses all persons. No additional person exclusions are silently applied.}
 \item{location_column}{One of county, city, state, zip, location_source_value or country_source_value in LOCATION. Selection is a provider decision; county does not universally mean health area.}
 \item{crosswalk}{Optional data frame with unique location_value and area_id. If supplied, unmatched source values enter __UNKNOWN__. If omitted, values are matched directly to geometry IDs and unmapped groups are retained.}

@@ -1,4 +1,4 @@
-# Calendar bounds only: never repair data, change membership or infer ETL dates.
+# Calendar/birth bounds: never repair data, change membership or infer ETL dates.
 event_date_fields <- function() list(
   visit_occurrence=c("visit_start_date","visit_end_date"),
   condition_occurrence=c("condition_start_date","condition_end_date"),
@@ -8,10 +8,9 @@ event_date_fields <- function() list(
   procedure_occurrence=c("procedure_date","procedure_end_date"),
   device_exposure=c("device_exposure_start_date","device_exposure_end_date"))
 
-event_date_exclusions <- function(con,config,table,alias="d",columns=NULL) {
-  if(is.null(config$event_date_min))return(list(before="FALSE",after="FALSE",any="FALSE"))
+event_date_exclusions <- function(con,config,table,alias="d",columns=NULL,person_alias="p") {
   fields<-event_date_fields()[[table]]
-  if(is.null(fields))return(list(before="FALSE",after="FALSE",any="FALSE"))
+  if(is.null(fields))return(list(before="FALSE",after="FALSE",before_birth="FALSE",any="FALSE"))
   if(!is.null(columns))fields<-intersect(fields,columns)
   if(!length(fields))stop("No recognised event date column in ",table)
   quote<-function(x)paste0(DBI::dbQuoteString(con,as.character(x)),"::date")
@@ -20,9 +19,18 @@ event_date_exclusions <- function(con,config,table,alias="d",columns=NULL) {
     if(!length(cols))return("FALSE")
     paste0("COALESCE(",alias,".",cols,op,quote(bound),",false)",collapse=" OR ")
   }
-  before<-compare(fields,"<",config$event_date_min)
-  after<-compare(upper,">",config$database_cutoff)
-  list(before=before,after=after,any=paste0("(",before,") OR (",after,")"))
+  active<-!is.null(config$event_date_min)
+  before<-if(active)compare(fields,"<",config$event_date_min) else "FALSE"
+  after<-if(active)compare(upper,">",config$database_cutoff) else "FALSE"
+  rule<-if(is.null(config$birth_date_rule))"year" else config$birth_date_rule
+  birth<-if(rule=="off")"FALSE" else paste(vapply(fields,function(f) {
+    date<-paste0(alias,".",f)
+    year<-paste0("EXTRACT(YEAR FROM ",date,")<",person_alias,".year_of_birth")
+    predicate<-if(rule=="date")paste0("CASE WHEN ",person_alias,".birth_datetime IS NOT NULL THEN ",date,"<",person_alias,".birth_datetime::date ELSE ",year," END") else year
+    paste0("COALESCE((",predicate,"),false)")
+  },""),collapse=" OR ")
+  list(before=before,after=after,before_birth=birth,
+    any=if(active)paste0("(",before,") OR (",after,") OR (",birth,")") else "FALSE")
 }
 
 event_date_predicate <- function(con,config,table,alias="d",columns=NULL) {
@@ -45,9 +53,11 @@ review_event_dates <- function(con,config,cohort=NULL,
     sql<-paste0("SELECT count(*)::bigint AS records,",
       "count(*) FILTER(WHERE ",flags$before,")::bigint AS before_min_records,",
       "count(*) FILTER(WHERE ",flags$after,")::bigint AS after_cutoff_records,",
+      "count(*) FILTER(WHERE ",flags$before_birth,")::bigint AS before_birth_records,",
       "count(*) FILTER(WHERE ",flags$any,")::bigint AS excluded_records,",
       "count(DISTINCT d.person_id) FILTER(WHERE ",flags$any,")::bigint AS affected_persons FROM ",
-      qualified_table(con,config$cdm_schema,t)," d WHERE ",scope)
+      qualified_table(con,config$cdm_schema,t)," d LEFT JOIN ",
+      qualified_table(con,config$cdm_schema,"person")," p ON p.person_id=d.person_id WHERE ",scope)
     started<-proc.time()[[3]]
     z<-DBI::dbGetQuery(con,sql)
     z$table<-t;z$elapsed_seconds<-proc.time()[[3]]-started
@@ -66,6 +76,7 @@ event_filter_summary_html <- function(profile) {
     " (cutoff source: ",if(is.null(cfg$database_cutoff_source))"provided" else cfg$database_cutoff_source,")",
     ". Inclusive bounds. Drug end dates are exempt from the upper bound only. ",
     "People remain in the denominator. Missing dates are not excluded by this rule. ",
+    "Birth comparison: ",if(is.null(cfg$birth_date_rule))"year" else cfg$birth_date_rule,". ",
     "Diagnostic evidence other than event_dates may describe unfiltered source records.")
   rows<-""
   if(!is.null(audit)&&nrow(audit)) {

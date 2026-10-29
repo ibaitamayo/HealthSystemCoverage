@@ -106,7 +106,7 @@ evaluate_core_components <- function(spec, evidence) {
     } else if (valid > 0) {
       "detected_partial"
     } else if (source_values > 0) {
-      "detected_misclassified"
+      "detected_partial"
     } else {
       "detected_partial"
     }
@@ -218,7 +218,7 @@ profile_health_system <- function(con, config,
                                   modules = c("inventory", "person",
                                               "observation_period", "visits",
                                               "conditions", "drugs", "death",
-                                              "note_schema", "coverage")) {
+                                              "note_schema", "coverage", "source_crosswalk")) {
   assert_connection(con)
   if (!inherits(config, "health_system_profile_config")) {
     stop("config must be created with new_profile_config()")
@@ -228,6 +228,7 @@ profile_health_system <- function(con, config,
   }
   schema <- config$cdm_schema
   probes <- list(config = config)
+  if("source_crosswalk"%in%modules)probes$source_crosswalk<-safe_probe("source_crosswalk",function()audit_source_crosswalk(con,config))
   if ("event_dates" %in% modules) probes$event_dates <- list(name="event_dates",status="ok",data=review_event_dates(con,config))
   if (!is.null(config$event_date_min) && !"coverage" %in% modules)
     stop("Event date filtering requires the coverage module for filtered quantitative results")
@@ -247,15 +248,7 @@ profile_health_system <- function(con, config,
   components <- evaluate_core_components(health_system_spec(), probes)
   components <- apply_adjudications(components, config$adjudications)
   # Quantitative output is refreshed from this run, independently of reviewed interpretation.
-  if (!is.null(probes$coverage$data) && nrow(probes$coverage$data)) {
-    for (i in seq_len(nrow(components))) {
-      z <- probes$coverage$data[probes$coverage$data$node_id==components$component_id[i],,drop=FALSE]
-      if (nrow(z)) {
-        components$persons[i] <- z$persons[1];components$records[i] <- z$records[1]
-        components$start_date[i] <- as.Date(z$start_date[1]);components$end_date[i] <- as.Date(z$end_date[1])
-      }
-    }
-  }
+  components<-apply_coverage_quality(components,probes$coverage$data,config)
   errors <- do.call(rbind, lapply(probes[vapply(probes, is.list, logical(1))], function(x) {
     if (is.null(x$status) || x$status != "error") return(NULL)
     data.frame(probe = x$name, error = x$error, stringsAsFactors = FALSE)
@@ -264,6 +257,8 @@ profile_health_system <- function(con, config,
     list(
       generated_at = Sys.time(), config = config,
       components = components, evidence = probes,
+      findings = rbind(coverage_findings(probes$coverage$data,config),
+        if(!is.null(probes$source_crosswalk$data$findings))probes$source_crosswalk$data$findings else empty_findings()),
       probe_errors = errors
     ),
     class = "health_system_profile"

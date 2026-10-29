@@ -44,7 +44,7 @@ area_coverage_from_data <- function(data,areas,privacy_min_cell=5L,
   required<-c("area_id","node_id","label","persons","population")
   if(!all(required%in%names(data)))stop("Area results require: ",paste(required,collapse=", "))
   if(!is.numeric(privacy_min_cell)||length(privacy_min_cell)!=1L||!is.finite(privacy_min_cell)||privacy_min_cell<0)stop("Invalid privacy_min_cell")
-  d<-data[,intersect(c(required,"records","area_name","level","parent_id"),names(data)),drop=FALSE]
+  d<-data[,intersect(c(required,"records","area_name","level","parent_id",quality_fields(),"reliability","status","issues"),names(data)),drop=FALSE]
   for(nm in c("area_id","node_id","label")) {
     d[[nm]]<-as.character(d[[nm]])
     if(anyNA(d[[nm]])||any(!nzchar(d[[nm]])))stop("Missing identifier or label")
@@ -96,7 +96,7 @@ area_coverage_results <- function(profile) {
   d$records[hide|(!is.na(d$records)&d$records>0&d$records<k)]<-NA_real_
   d$population[small_population]<-NA_real_
   d$percentage<-ifelse(!hide&!is.na(d$population)&d$population>0,100*d$persons/d$population,NA_real_)
-  d
+  suppress_small_cells(d,k)
 }
 
 profile_health_areas <- function(con,config,areas,cohort=NULL,location_column="county",
@@ -129,7 +129,7 @@ profile_health_areas <- function(con,config,areas,cohort=NULL,location_column="c
   if(any(den$area_id=="__ALL__"))stop("Reserved area_id __ALL__ in source")
   den$population<-as.double(den$population)
   den<-rbind(data.frame(area_id="__ALL__",population=sum(den$population)),den)
-  queries<-coverage_event_queries(con,config,cohort)
+  queries<-coverage_event_queries(con,config,cohort,apply_event_filter=FALSE)
   if(!is.null(components)) {
     if(!length(components)||any(!components%in%names(queries)))stop("Unknown or unavailable component definition")
     queries<-queries[unique(components)]
@@ -146,14 +146,21 @@ profile_health_areas <- function(con,config,areas,cohort=NULL,location_column="c
     message("Area coverage: ",node)
     sql<-paste0("WITH pa AS (",person_areas,"),events AS (",events,") ",
       "SELECT CASE WHEN GROUPING(pa.area_id)=1 THEN '__ALL__' ELSE pa.area_id END AS area_id,",
-      "count(DISTINCT e.person_id)::bigint AS persons,count(*)::bigint AS records ",
+      coverage_aggregate_sql()," ",
       "FROM events e JOIN pa ON pa.person_id=e.person_id GROUP BY GROUPING SETS ((pa.area_id),())")
     counts<-DBI::dbGetQuery(con,sql)
     z<-merge(den,counts,by="area_id",all.x=TRUE,sort=FALSE)
-    z$persons<-as.double(z$persons);z$records<-as.double(z$records)
-    z$persons[is.na(z$persons)]<-0;z$records[is.na(z$records)]<-0
+    count_fields<-names(z)[grepl("(^persons$|^records$|_records$|_persons$)",names(z))]
+    for(nm in count_fields){z[[nm]]<-as.double(z[[nm]]);z[[nm]][is.na(z[[nm]])]<-0}
     c<-catalog[catalog$node_id==node,]
     z$node_id<-node;z$label<-c$label;z$level<-c$level;z$parent_id<-c$parent_id
+    z<-enrich_coverage_stats(z,config)
+    z$status<-ifelse(z$records==0,"not_detected",ifelse(z$mapping_records>0 & z$valid_standard_records==z$mapping_records,"detected_structured","detected_partial"))
+    z$reliability<-vapply(seq_len(nrow(z)),function(i){
+      temporal<-intersect(c("before_min_retained_records","after_cutoff_retained_records","before_birth_retained_records","end_before_start_retained_records"),names(z))
+      bad_dates<-sum(as.double(unlist(z[i,temporal,drop=FALSE],use.names=FALSE)),na.rm=TRUE)>0
+      base<-if(z$records[i]==0)"unknown" else if(bad_dates || (z$mapping_records[i]>0 && z$valid_standard_records[i]<z$mapping_records[i]))"low" else "moderate"
+      cap_reliability(base,z$reliability_cap[i])},"")
     out[[node]]<-z
   }
   if(!length(out))stop("No assessed geographic indicators")
@@ -161,8 +168,14 @@ profile_health_areas <- function(con,config,areas,cohort=NULL,location_column="c
   if(!is.null(config$event_date_min))population_note<-paste0(population_note,
     " Event calendar bounds: ",config$event_date_min," through ",config$database_cutoff,
     " (",config$database_cutoff_source,"); drug end dates exempt only from the upper bound.")
-  area_coverage_from_data(do.call(rbind,out),areas,config$privacy_min_cell,
+  measured<-do.call(rbind,out)
+  if(!is.null(cohort))config$analysis_population<-list(name=cohort$name)
+  result<-area_coverage_from_data(measured,areas,config$privacy_min_cell,
     if(is.null(config$source_name))s else config$source_name,population_note,attribution)
+  result$crosswalk_audit<-audit_source_crosswalk(con,config)
+  result$findings<-rbind(coverage_findings(measured,config),
+    if(!is.null(result$crosswalk_audit$findings))result$crosswalk_audit$findings else empty_findings())
+  result
 }
 
 write_area_report <- function(profile,path) {
@@ -170,6 +183,9 @@ write_area_report <- function(profile,path) {
   dir.create(path,recursive=TRUE,showWarnings=FALSE)
   d<-area_coverage_results(profile)
   utils::write.csv(d,file.path(path,"area_coverage_results.csv"),row.names=FALSE,na="")
+  findings<-if(is.null(profile$findings))empty_findings() else profile$findings
+  utils::write.csv(suppress_small_cells(findings,profile$privacy_min_cell),file.path(path,"quality_findings.csv"),row.names=FALSE,na="")
+  write_crosswalk_audit(profile$crosswalk_audit,path)
   payload<-list(results=d,map=unclass(profile$areas),source=profile$source_name,
     population_note=profile$population_note,attribution=profile$attribution,
     generated=format(profile$generated_at,tz="UTC",usetz=TRUE))
@@ -177,6 +193,7 @@ write_area_report <- function(profile,path) {
   encoded<-gsub("<","\\u003c",encoded,fixed=TRUE)
   template<-paste(readLines(system.file("geography","report.html",package="HealthSystemCoverage"),warn=FALSE),collapse="\n")
   html<-sub("__AREA_PAYLOAD__",encoded,template,fixed=TRUE)
+  html<-sub("</body>",paste0(findings_html(findings,profile$privacy_min_cell),crosswalk_audit_html(profile$crosswalk_audit),"</body>"),html,fixed=TRUE)
   writeLines(html,file.path(path,"area_report.html"),useBytes=TRUE)
   # Only masked aggregates and geometry are exported, never crosswalk/person IDs.
   writeLines(encoded,file.path(path,"area_coverage_results.json"),useBytes=TRUE)

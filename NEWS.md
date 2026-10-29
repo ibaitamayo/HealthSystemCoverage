@@ -1,3 +1,21 @@
+# HealthSystemCoverage 0.2.4
+
+* Add visible source-coded, resolved-source and crosswalk-provenance fractions,
+  distinguishing code presence from documentation of the assigned target.
+* Audit resolved vocabulary sources and active declared-vocabulary crosswalks;
+  ambiguous crosswalk candidates limit provenance reliability without declaring
+  clinical mappings invalid. Missing documentation is unusable only under the
+  explicit require_local audit policy; research fitness is not upgraded.
+* Add a standalone source_to_concept_map audit: target resolution, distinct
+  candidates per vocabulary/code, and optional declared target-domain contracts.
+  Crosswalk findings are instance metadata, never clinical event verdicts.
+* Add year-of-birth event exclusions when calendar filtering is enabled, with
+  optional strict date comparison or off mode. No new person exclusions.
+* Export scoped quality findings with ordered incremental exclusions and prior-
+  rule overlaps, consistently across global, cohort and geographic profiles.
+* R3 vocabulary-reachability verdicts, alias audits, cutoff-lag alerts, visit
+  hierarchy inference and dispensing-type discovery remain deferred.
+
 # HealthSystemCoverage 0.2.3
 
 * Add provider-defined GeoJSON/shapefile/sf area boundaries and explicit

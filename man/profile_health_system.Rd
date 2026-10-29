@@ -3,7 +3,7 @@
 \title{Profile logical health-system coverage in an OMOP database}
 \usage{profile_health_system(con, config,
 modules = c("inventory", "person", "observation_period", "visits",
-"conditions", "drugs", "death", "note_schema", "coverage"))}
+"conditions", "drugs", "death", "note_schema", "coverage", "source_crosswalk"))}
 \arguments{
 \item{con}{Open DBI connection.}
 \item{config}{Configuration returned by \code{new_profile_config()}.}

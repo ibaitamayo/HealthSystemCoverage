@@ -18,7 +18,23 @@ new_profile_config <- function(cdm_schema,
                                component_rules = NULL,
                                source_name = NULL,
                                visit_concept_map = NULL,
-                               event_date_min = NULL) {
+                               event_date_min = NULL,
+                               birth_date_rule = c("year", "date", "off"),
+                               mapping_audit_policy = c("require_local", "report"),
+                               source_vocabularies = NULL,
+                               crosswalk_domains = NULL) {
+  birth_date_rule <- match.arg(birth_date_rule)
+  mapping_audit_policy <- match.arg(mapping_audit_policy)
+  if(!is.null(source_vocabularies) &&
+     (!is.character(source_vocabularies)||is.null(names(source_vocabularies))||
+      anyNA(source_vocabularies)||any(!nzchar(source_vocabularies))||
+      any(!nzchar(names(source_vocabularies)))||anyDuplicated(names(source_vocabularies))))
+    stop("source_vocabularies must be a named character vector: OMOP table -> source vocabulary ID")
+  if(!is.null(crosswalk_domains)&&(!is.data.frame(crosswalk_domains)||
+    !all(c("source_vocabulary_id","expected_domain")%in%names(crosswalk_domains))||
+    anyNA(crosswalk_domains[,c("source_vocabulary_id","expected_domain")])||
+    any(!nzchar(crosswalk_domains$source_vocabulary_id))||any(!nzchar(crosswalk_domains$expected_domain))))
+    stop("crosswalk_domains requires source_vocabulary_id and expected_domain")
   stopifnot(is.character(cdm_schema), length(cdm_schema) == 1L, nzchar(cdm_schema))
   stopifnot(is.numeric(privacy_min_cell), length(privacy_min_cell) == 1L,
             privacy_min_cell >= 0)
@@ -68,6 +84,10 @@ new_profile_config <- function(cdm_schema,
       database_cutoff = as.Date(database_cutoff),
       database_cutoff_source = cutoff_source,
       event_date_min = event_date_min,
+      birth_date_rule = birth_date_rule,
+      mapping_audit_policy = mapping_audit_policy,
+      source_vocabularies = source_vocabularies,
+      crosswalk_domains = crosswalk_domains,
       dbms = tolower(dbms),
       component_rules = component_rules,
       source_name = source_name

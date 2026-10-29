@@ -131,6 +131,21 @@ table masking is not an anonymisation guarantee.
 
 ## Documentation and development
 
+### Scoped quality and mapping provenance (0.2.4)
+
+Profiles now distinguish nonzero source IDs, resolved source concepts, codes
+present in a declared-vocabulary crosswalk and documentation of the assigned
+target. Crosswalk-only provenance is not treated as a missing-source failure.
+`audit_source_crosswalk()` reports target resolution, distinct candidates and
+optional declared domain contracts independently of clinical events.
+
+With event calendar filtering enabled, before-birth-year events are excluded
+by default (`birth_date_rule="year"`); strict date comparison or off mode are
+explicit options. `quality_findings.csv` separates retained defects,
+incremental exclusions and prior-rule overlaps. The same scoped logic applies
+to global, cohort and geographic results. See
+[quality and provenance](docs/QUALITY_AND_PROVENANCE.md).
+
 ### Geographic comparison (0.2.3)
 
 Provide local GeoJSON/shapefile boundaries with unique IDs using

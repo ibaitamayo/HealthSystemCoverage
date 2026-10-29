@@ -95,15 +95,17 @@ probe_domain_by_visit_source <- function(con, config, table, id_column,
     "count(*) FILTER (WHERE dc.standard_concept='S' AND dc.domain_id=",
     DBI::dbQuoteString(con, expected_domain), ")::bigint AS valid_standard_records, ",
     "count(*) FILTER (WHERE d.", qid(con, source_concept_column), " <> 0)::bigint AS source_coded_records, ",
+    "count(*) FILTER (WHERE d.", qid(con, source_concept_column), "<>0 AND sc.concept_id IS NOT NULL)::bigint AS source_resolved_records, ",
     "count(*) FILTER (WHERE d.", qid(con, source_value_column),
     " IS NOT NULL AND btrim(d.", qid(con, source_value_column),
-    ")<>'')::bigint AS source_value_records ",
+    ")<>'')::bigint AS source_value_records, 'raw_domain_before_event_filters'::text AS data_scope ",
     "FROM ", d, " d LEFT JOIN ", v,
     " v ON v.visit_occurrence_id=d.visit_occurrence_id AND v.person_id=d.person_id ",
     "LEFT JOIN ", cpt, " vc ON vc.concept_id=v.visit_concept_id ",
     "LEFT JOIN ", cs, " cs ON cs.care_site_id=v.care_site_id ",
     "LEFT JOIN ", cpt, " pc ON pc.concept_id=cs.place_of_service_concept_id ",
     "LEFT JOIN ", cpt, " dc ON dc.concept_id=d.", qid(con, concept_column),
+    " LEFT JOIN ", cpt, " sc ON sc.concept_id=d.", qid(con, source_concept_column),
     " GROUP BY 1 ORDER BY records DESC"
   )
   DBI::dbGetQuery(con, sql)

@@ -1,16 +1,29 @@
 # Current, traceable definitions. Each SELECT returns person, source record and date.
-coverage_event_queries <- function(con, config, cohort=NULL) {
+coverage_event_queries <- function(con, config, cohort=NULL,apply_event_filter=TRUE) {
   s <- config$cdm_schema
   tab <- function(t) qualified_table(con, s, t)
   present <- function(t) table_exists(con, s, t)
   queries <- list()
+  column_cache<-new.env(parent=emptyenv())
+  columns<-function(t) {
+    if(!exists(t,column_cache,inherits=FALSE))assign(t,table_columns(con,s,t),column_cache)
+    get(t,column_cache,inherits=FALSE)
+  }
+  map_available<-present("source_to_concept_map") && all(c("source_code","source_vocabulary_id","target_concept_id","invalid_reason")%in%columns("source_to_concept_map"))
   scope_sql <- if(is.null(cohort))NULL else cohort_sql(con,cohort)
   put <- function(cid, sql) queries[[cid]] <<- sql
   person_join <- paste0(" JOIN ", tab("person"), " p ON p.person_id=d.person_id ")
   event <- function(table, key, date, predicate = "TRUE", extra = "") {
-    if(!is.null(config$event_date_min) && table %in% names(event_date_fields()))
+    dates<-event_date_exclusions(con,config,table,columns=columns(table))
+    ordered_dates<-intersect(event_date_fields()[[table]],columns(table))
+    reversed<-if(length(ordered_dates)>1L)paste0("COALESCE(d.",ordered_dates[-1],"<d.",ordered_dates[1],",false)",collapse=" OR ") else "FALSE"
+    mapping<-mapping_event_flags(con,config,table,columns(table),map_available)
+    ms<-mapping_spec()[[table]]
+    has_crosswalk<-map_available&&!is.null(ms)&&all(ms[1:3]%in%columns(table))
+    if(has_crosswalk)extra<-paste0(extra," LEFT JOIN hsc_crosswalk sm ON sm.source_code=d.",ms[3]," ")
+    if(apply_event_filter && !is.null(config$event_date_min) && table %in% names(event_date_fields()))
       predicate <- paste0("(",predicate,") AND ",event_date_predicate(con,config,table,
-        columns=table_columns(con,s,table)))
+        columns=columns(table)))
     if(!is.null(cohort)) {
       window <- if(is.null(date)) "TRUE" else if(table=="observation_period")
         "d.observation_period_start_date<=cw.cohort_end_date AND d.observation_period_end_date>=cw.cohort_start_date" else
@@ -18,10 +31,19 @@ coverage_event_queries <- function(con, config, cohort=NULL) {
       predicate <- paste0("(",predicate,") AND EXISTS (SELECT 1 FROM (",scope_sql,
         ") cw WHERE cw.subject_id=d.person_id AND ",window,")")
     }
-    paste0("SELECT d.person_id, '", table, "'::text AS source_table, d.", key,
+    sql<-paste0("SELECT d.person_id, '", table, "'::text AS source_table, d.", key,
       "::text AS record_id, ", if (is.null(date)) "NULL::date" else paste0("d.", date),
-      " AS event_date FROM ", tab(table), " d", person_join, extra,
+      " AS event_date, ",paste0(unname(mapping)," AS ",names(mapping),collapse=", "),
+      ", (",dates$before,") AS before_min, (",dates$after,") AS after_cutoff, (",dates$before_birth,") AS before_birth, (",reversed,") AS end_before_start, (",dates$any,") AS event_excluded FROM ", tab(table), " d", person_join, extra,
       " WHERE ", predicate)
+    if(has_crosswalk) {
+      cw<-qualified_table(con,s,"source_to_concept_map")
+      vocab<-config$source_vocabularies[table]
+      restrict<-if(length(vocab)==1L&&!is.na(vocab))paste0(" AND source_vocabulary_id=",DBI::dbQuoteString(con,unname(vocab))) else ""
+      sql<-paste0("WITH hsc_crosswalk AS MATERIALIZED (SELECT source_code,array_agg(DISTINCT target_concept_id) AS target_ids,count(DISTINCT target_concept_id) AS target_count,count(DISTINCT source_vocabulary_id) AS vocabulary_count FROM ",cw,
+        " WHERE invalid_reason IS NULL AND NULLIF(btrim(source_vocabulary_id),'') IS NOT NULL",restrict," GROUP BY source_code) ",sql)
+    }
+    sql
   }
   if (!present("person")) return(queries)
   for (cid in c("population_registry", "demographics"))
@@ -95,7 +117,7 @@ coverage_event_queries <- function(con, config, cohort=NULL) {
 }
 
 probe_coverage <- function(con, config, cohort=NULL) {
-  queries <- coverage_event_queries(con, config, cohort)
+  queries <- coverage_event_queries(con, config, cohort,apply_event_filter=FALSE)
   if (!length(queries)) return(data.frame())
   member <- coverage_membership()
   nodes <- c(as.character(member$component_id), unique(member$group_id), unique(member$area_id))
@@ -108,13 +130,12 @@ probe_coverage <- function(con, config, cohort=NULL) {
     message("Coverage: ", node)
     # UNION deduplicates both people and records shared by multiple definitions.
     events <- paste(vapply(queries[ids],function(q) paste0("(",q,")"),""),collapse=" UNION ")
-    sql <- paste0("SELECT count(DISTINCT person_id)::bigint AS persons, count(*)::bigint AS records, ",
-      "min(event_date) AS start_date, max(event_date) AS end_date FROM (", events, ") events")
+    sql <- paste0("SELECT ",coverage_aggregate_sql()," FROM (",events,") e")
     z <- DBI::dbGetQuery(con,sql)
     z$persons <- as.double(z$persons);z$records <- as.double(z$records)
     z$node_id <- node
     z$assessed_children <- paste(ids,collapse=";")
     results[[node]] <- z
   }
-  do.call(rbind,results)
+  enrich_coverage_stats(do.call(rbind,results),config)
 }

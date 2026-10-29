@@ -15,7 +15,7 @@
 <p id="unmapped" class="muted"></p>
 </section>
 <section class="panel"><div class="summary-head"><h2 id="summary-title">Single profile</h2><span id="denominator"></span></div>
-<div class="table-wrap"><table><thead><tr><th>Health-system component</th><th class="number">People with data</th><th class="number">Population</th><th class="number">Representation</th><th class="number">Records</th></tr></thead><tbody id="summary"></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Health-system component</th><th class="number">People with data</th><th class="number">Population</th><th class="number">Representation</th><th class="number">Records</th><th>Reliability</th><th>Source coded</th><th>Source resolved</th><th>Source crosswalked</th><th>Assigned target in crosswalk</th></tr></thead><tbody id="summary"></tbody></table></div>
 <div class="toolbar"><button id="download" type="button">Download selected table</button><a href="area_coverage_results.csv" download>All area results (CSV)</a></div>
 </section>
 <details class="panel"><summary>Population, interpretation and provenance</summary><dl>
@@ -82,7 +82,7 @@ function update(){
  byId('summary-title').textContent='Single profile · '+head.area_name;byId('denominator').textContent='N = '+count(head.population);
  const table=byId('summary');table.replaceChildren();
  group.forEach(r=>{const tr=document.createElement('tr');tr.className=r.level;
-  [r.label,count(r.persons),count(r.population),pct(r.percentage),count(r.records)].forEach((value,i)=>{const td=document.createElement('td');td.textContent=value;if(i)td.className='number';tr.append(td)});table.append(tr)});
+  [r.label,count(r.persons),count(r.population),pct(r.percentage),count(r.records),r.reliability||'Unknown',pct(finite(r.source_coded_fraction)?100*r.source_coded_fraction:null),pct(finite(r.source_resolved_fraction)?100*r.source_resolved_fraction:null),pct(finite(r.source_crosswalked_fraction)?100*r.source_crosswalked_fraction:null),pct(finite(r.assigned_target_crosswalked_fraction)?100*r.assigned_target_crosswalked_fraction:null)].forEach((value,i)=>{const td=document.createElement('td');td.textContent=value;if(i)td.className='number';tr.append(td)});table.append(tr)});
  const un=populations.filter(r=>r.area_id!=='__ALL__'&&!r.mapped);
  byId('unmapped').textContent=un.length?'Not located in mapped polygons: '+un.map(r=>r.area_name+' (N='+count(r.population)+')').join('; ')+'. Retained in overall population.':'';
  byId('selection-note').textContent='Select an area to filter the single profile below.';
@@ -90,7 +90,7 @@ function update(){
 metric.addEventListener('change',update);population.addEventListener('change',update);
 byId('download').addEventListener('click',()=>{
  const quote=v=>'"'+String(v??'').replaceAll('"','""')+'"';
- const fields=['area_id','area_name','node_id','parent_id','level','label','persons','population','percentage','records','measurement_status'];
+ const fields=['area_id','area_name','node_id','parent_id','level','label','persons','population','percentage','records','measurement_status','reliability','mapping_records','source_coded_fraction','source_resolved_fraction','source_crosswalked_fraction','assigned_target_crosswalked_fraction','mapping_audit_policy'];
  const content=[fields.join(','),...rows.filter(r=>r.area_id===population.value).map(r=>fields.map(k=>quote(r[k])).join(','))].join('\r\n');
  const url=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='selected-area-results.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });

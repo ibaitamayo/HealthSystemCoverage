@@ -94,6 +94,21 @@ empty_component_result <- function(spec) {
     end_date = as.Date(NA),
     structured_fraction = NA_real_,
     mapped_fraction = NA_real_,
+    source_coded_fraction = NA_real_,
+    source_resolved_fraction = NA_real_,
+    auditable_fraction = NA_real_,
+    mapping_records = NA_real_,
+    valid_standard_records = NA_real_,
+    source_coded_records = NA_real_,
+    source_resolved_records = NA_real_,
+    source_crosswalked_records = NA_real_,
+    assigned_target_crosswalked_records = NA_real_,
+    crosswalk_ambiguous_records = NA_real_,
+    crosswalk_origin_unspecified_records = NA_real_,
+    source_crosswalked_fraction = NA_real_,
+    assigned_target_crosswalked_fraction = NA_real_,
+    auditable_records = NA_real_,
+    mapping_audit_policy = NA_character_,
     evidence = NA_character_,
     issues = NA_character_
   )
@@ -114,11 +129,22 @@ set_component <- function(x, component_id, ...) {
 }
 
 suppress_small_cells <- function(x, threshold) {
+  original<-x
   numeric_count_columns <- names(x)[grepl(
     "(^persons$|^records$|_persons$|_records$|^unmapped_|^deaths$|^periods$|^invalid_periods$|_deaths$|_overlap$)", names(x))]
   for (nm in numeric_count_columns) {
     idx <- !is.na(x[[nm]]) & x[[nm]] > 0 & x[[nm]] < threshold
     x[[nm]][idx] <- NA_real_
+  }
+  fractions<-c(mapped_fraction="valid_standard_records",source_coded_fraction="source_coded_records",
+    source_resolved_fraction="source_resolved_records",source_crosswalked_fraction="source_crosswalked_records",
+    assigned_target_crosswalked_fraction="assigned_target_crosswalked_records",auditable_fraction="auditable_records")
+  for(f in intersect(names(fractions),names(x))) {
+    n<-fractions[[f]]
+    if(!all(c(n,"mapping_records")%in%names(x)))next
+    hidden<-(!is.na(original[[n]])&original[[n]]>0&original[[n]]<threshold)|
+      (!is.na(original$mapping_records)&original$mapping_records>0&original$mapping_records<threshold)
+    x[[f]][hidden]<-NA_real_
   }
   x
 }

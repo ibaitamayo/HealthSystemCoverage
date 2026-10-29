@@ -114,6 +114,10 @@ render_system_area <- function(area, groups, components) {
 write_profile_bundle <- function(profile, path) {
   if (!inherits(profile, "health_system_profile")) stop("profile has the wrong class")
   dir.create(path, recursive = TRUE, showWarnings = FALSE)
+  findings<-if(is.null(profile$findings))empty_findings() else profile$findings
+  utils::write.csv(suppress_small_cells(findings,profile$config$privacy_min_cell),
+    file.path(path,"quality_findings.csv"),row.names=FALSE,na="")
+  write_crosswalk_audit(profile$evidence$source_crosswalk$data,path)
   components <- suppress_small_cells(profile$components,
                                      profile$config$privacy_min_cell)
   utils::write.csv(components, file.path(path, "health_system_components.csv"),
